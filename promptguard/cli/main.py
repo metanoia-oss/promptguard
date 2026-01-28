@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Optional
 
 import click
 import yaml
@@ -98,7 +97,9 @@ def init(path: str) -> None:
     console.print("\n[green]PromptGuard initialized successfully![/green]")
     console.print("\nNext steps:")
     console.print("  1. Set your API key: export OPENAI_API_KEY=sk-...")
-    console.print("  2. Run a prompt: promptguard run prompts/example.yaml -i '{\"text\": \"John is 30\"}'")
+    console.print(
+        '  2. Run a prompt: promptguard run prompts/example.yaml -i \'{"text": "John is 30"}\''
+    )
 
 
 @cli.command()
@@ -109,10 +110,10 @@ def init(path: str) -> None:
 @click.option("--model", "-m", help="Override model")
 def run(
     prompt_file: str,
-    input_data: Optional[str],
-    output: Optional[str],
+    input_data: str | None,
+    output: str | None,
     verbose: bool,
-    model: Optional[str],
+    model: str | None,
 ) -> None:
     """Run a prompt from a YAML file.
 
@@ -202,7 +203,7 @@ def run(
 def test(
     path: str,
     update: bool,
-    filter_pattern: Optional[str],
+    filter_pattern: str | None,
     verbose: bool,
 ) -> None:
     """Run prompt regression tests.
@@ -235,7 +236,7 @@ def test(
 @click.argument("hash1")
 @click.argument("hash2", required=False)
 @click.option("--semantic", "-s", is_flag=True, help="Use semantic comparison")
-def diff(hash1: str, hash2: Optional[str], semantic: bool) -> None:
+def diff(hash1: str, hash2: str | None, semantic: bool) -> None:
     """Compare two prompt versions or snapshots.
 
     If only one hash is provided, shows the version details.
@@ -304,7 +305,7 @@ def diff(hash1: str, hash2: Optional[str], semantic: bool) -> None:
 @cli.command()
 @click.option("--limit", "-n", default=20, help="Number of versions to show")
 @click.option("--model", "-m", help="Filter by model")
-def history(limit: int, model: Optional[str]) -> None:
+def history(limit: int, model: str | None) -> None:
     """Show prompt version history.
 
     Lists recent prompt versions with their details.
@@ -402,7 +403,9 @@ def clear() -> None:
     versions_deleted = version_store.clear()
     snapshots_deleted = snapshot_store.clear()
 
-    console.print(f"[green]Cleared {versions_deleted} versions and {snapshots_deleted} snapshots[/green]")
+    console.print(
+        f"[green]Cleared {versions_deleted} versions and {snapshots_deleted} snapshots[/green]"
+    )
 
 
 if __name__ == "__main__":

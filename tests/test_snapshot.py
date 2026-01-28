@@ -4,8 +4,6 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-import pytest
-
 from promptguard.testing.snapshot import (
     Snapshot,
     SnapshotDiff,

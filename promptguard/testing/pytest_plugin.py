@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from promptguard.core.hashing import PromptHasher
 from promptguard.testing.semantic_diff import SemanticComparator
@@ -48,10 +48,10 @@ class PromptGuardFixture:
         self.update_snapshots = update_snapshots
         self.semantic_comparison = semantic_comparison
         self.semantic_threshold = semantic_threshold
-        self._comparator: Optional[SemanticComparator] = None
+        self._comparator: SemanticComparator | None = None
 
     @property
-    def comparator(self) -> Optional[SemanticComparator]:
+    def comparator(self) -> SemanticComparator | None:
         """Get the semantic comparator (lazy loaded)."""
         if self.semantic_comparison and self._comparator is None:
             try:
@@ -68,7 +68,7 @@ class PromptGuardFixture:
         actual_output: Any,
         schema: Any,
         raw_output: str = "",
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Assert that output matches stored snapshot.
 
@@ -141,7 +141,7 @@ class PromptGuardFixture:
                 f"Run with --update-snapshots to update the baseline."
             )
 
-    def get_snapshot(self, prompt: str, model: str) -> Optional[Snapshot]:
+    def get_snapshot(self, prompt: str, model: str) -> Snapshot | None:
         """Get a stored snapshot.
 
         Args:

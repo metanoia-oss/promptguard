@@ -77,7 +77,7 @@ class OutputValidator:
         # Try to find JSON in markdown code blocks
         code_block_patterns = [
             r"```json\s*([\s\S]*?)```",  # ```json ... ```
-            r"```\s*([\s\S]*?)```",       # ``` ... ```
+            r"```\s*([\s\S]*?)```",  # ``` ... ```
         ]
 
         for pattern in code_block_patterns:
@@ -91,7 +91,7 @@ class OutputValidator:
 
         # Try to find a JSON object or array directly
         # Look for balanced braces/brackets
-        json_pattern = r'(\{[\s\S]*\}|\[[\s\S]*\])'
+        json_pattern = r"(\{[\s\S]*\}|\[[\s\S]*\])"
         match = re.search(json_pattern, text)
         if match:
             potential_json = match.group(1)
@@ -133,12 +133,14 @@ class OutputValidator:
             raise ValidationError(
                 f"Invalid JSON in LLM output: {e}",
                 raw_output=raw_output,
-                errors=[{
-                    "type": "json_decode_error",
-                    "msg": str(e),
-                    "loc": [],
-                    "pos": e.pos,
-                }],
+                errors=[
+                    {
+                        "type": "json_decode_error",
+                        "msg": str(e),
+                        "loc": [],
+                        "pos": e.pos,
+                    }
+                ],
             )
 
         # Validate against schema

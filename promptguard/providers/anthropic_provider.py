@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any, AsyncIterator, Iterator, Optional
+from collections.abc import AsyncIterator, Iterator
+from typing import Any
 
 from promptguard.core.exceptions import ProviderError
 from promptguard.providers.base import (
@@ -38,7 +39,7 @@ class AnthropicProvider(LLMProvider):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         timeout: float = 60.0,
     ) -> None:
         """Initialize Anthropic provider.
@@ -70,9 +71,7 @@ class AnthropicProvider(LLMProvider):
             timeout=self._timeout,
         )
 
-    def _convert_messages(
-        self, messages: list[Message]
-    ) -> tuple[Optional[str], list[dict[str, str]]]:
+    def _convert_messages(self, messages: list[Message]) -> tuple[str | None, list[dict[str, str]]]:
         """Convert messages, extracting system message separately.
 
         Anthropic's API handles system messages differently from user/assistant
@@ -81,7 +80,7 @@ class AnthropicProvider(LLMProvider):
         Returns:
             Tuple of (system_message, api_messages)
         """
-        system_message: Optional[str] = None
+        system_message: str | None = None
         api_messages: list[dict[str, str]] = []
 
         for msg in messages:
@@ -89,10 +88,12 @@ class AnthropicProvider(LLMProvider):
                 # Anthropic only supports one system message
                 system_message = msg.content
             else:
-                api_messages.append({
-                    "role": msg.role.value,
-                    "content": msg.content,
-                })
+                api_messages.append(
+                    {
+                        "role": msg.role.value,
+                        "content": msg.content,
+                    }
+                )
 
         return system_message, api_messages
 
@@ -101,8 +102,8 @@ class AnthropicProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        json_schema: Optional[dict[str, Any]] = None,
+        max_tokens: int | None = None,
+        json_schema: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> CompletionResponse:
         """Execute a synchronous completion request."""
@@ -157,8 +158,8 @@ class AnthropicProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        json_schema: Optional[dict[str, Any]] = None,
+        max_tokens: int | None = None,
+        json_schema: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> CompletionResponse:
         """Execute an asynchronous completion request."""
@@ -211,7 +212,7 @@ class AnthropicProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         **kwargs: Any,
     ) -> Iterator[str]:
         """Execute a synchronous streaming completion request."""
@@ -229,8 +230,7 @@ class AnthropicProvider(LLMProvider):
 
         try:
             with self._client.messages.stream(**api_kwargs) as stream:
-                for text in stream.text_stream:
-                    yield text
+                yield from stream.text_stream
         except Exception as e:
             raise ProviderError(
                 f"Anthropic API streaming error: {e}",
@@ -242,7 +242,7 @@ class AnthropicProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[str]:
         """Execute an asynchronous streaming completion request."""

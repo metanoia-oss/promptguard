@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any, AsyncIterator, Iterator, Optional
+from collections.abc import AsyncIterator, Iterator
+from typing import Any
 
 from promptguard.core.exceptions import ProviderError
 from promptguard.providers.base import (
@@ -38,7 +39,7 @@ class GeminiProvider(LLMProvider):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
     ) -> None:
         """Initialize Gemini provider.
 
@@ -52,8 +53,7 @@ class GeminiProvider(LLMProvider):
             import google.generativeai as genai
         except ImportError:
             raise ProviderError(
-                "Google Generative AI package not installed. "
-                "Run: pip install promptguard[google]",
+                "Google Generative AI package not installed. Run: pip install promptguard[google]",
                 provider="gemini",
             )
 
@@ -61,30 +61,32 @@ class GeminiProvider(LLMProvider):
         genai.configure(api_key=self._api_key)
         self._genai = genai
 
-    def _convert_messages(
-        self, messages: list[Message]
-    ) -> tuple[Optional[str], list[dict[str, Any]]]:
+    def _convert_messages(self, messages: list[Message]) -> tuple[str | None, list[dict[str, Any]]]:
         """Convert messages to Gemini format.
 
         Returns:
             Tuple of (system_instruction, chat_history)
         """
-        system_instruction: Optional[str] = None
+        system_instruction: str | None = None
         chat_history: list[dict[str, Any]] = []
 
         for msg in messages:
             if msg.role == MessageRole.SYSTEM:
                 system_instruction = msg.content
             elif msg.role == MessageRole.USER:
-                chat_history.append({
-                    "role": "user",
-                    "parts": [msg.content],
-                })
+                chat_history.append(
+                    {
+                        "role": "user",
+                        "parts": [msg.content],
+                    }
+                )
             elif msg.role == MessageRole.ASSISTANT:
-                chat_history.append({
-                    "role": "model",
-                    "parts": [msg.content],
-                })
+                chat_history.append(
+                    {
+                        "role": "model",
+                        "parts": [msg.content],
+                    }
+                )
 
         return system_instruction, chat_history
 
@@ -93,8 +95,8 @@ class GeminiProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        json_schema: Optional[dict[str, Any]] = None,
+        max_tokens: int | None = None,
+        json_schema: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> CompletionResponse:
         """Execute a synchronous completion request."""
@@ -156,8 +158,8 @@ class GeminiProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        json_schema: Optional[dict[str, Any]] = None,
+        max_tokens: int | None = None,
+        json_schema: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> CompletionResponse:
         """Execute an asynchronous completion request.
@@ -166,11 +168,10 @@ class GeminiProvider(LLMProvider):
         This method wraps the sync call for now.
         """
         import asyncio
+
         return await asyncio.get_event_loop().run_in_executor(
             None,
-            lambda: self.complete(
-                messages, model, temperature, max_tokens, json_schema, **kwargs
-            ),
+            lambda: self.complete(messages, model, temperature, max_tokens, json_schema, **kwargs),
         )
 
     def stream(
@@ -178,7 +179,7 @@ class GeminiProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         **kwargs: Any,
     ) -> Iterator[str]:
         """Execute a synchronous streaming completion request."""
@@ -225,7 +226,7 @@ class GeminiProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[str]:
         """Execute an asynchronous streaming completion request.

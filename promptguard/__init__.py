@@ -46,7 +46,14 @@ __all__ = [
 
 def __getattr__(name: str):
     """Lazy import for heavy modules."""
-    if name in ("llm_call", "allm_call", "PromptGuardEngine", "LLMCallResult", "get_engine", "configure"):
+    if name in (
+        "llm_call",
+        "allm_call",
+        "PromptGuardEngine",
+        "LLMCallResult",
+        "get_engine",
+        "configure",
+    ):
         from promptguard.core.engine import (
             LLMCallResult,
             PromptGuardEngine,
@@ -55,6 +62,7 @@ def __getattr__(name: str):
             get_engine,
             llm_call,
         )
+
         return {
             "llm_call": llm_call,
             "allm_call": allm_call,
@@ -66,6 +74,7 @@ def __getattr__(name: str):
 
     if name in ("PromptVersion", "PromptHasher"):
         from promptguard.core.hashing import PromptHasher, PromptVersion
+
         return {"PromptVersion": PromptVersion, "PromptHasher": PromptHasher}[name]
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from collections.abc import AsyncIterator, Iterator
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, AsyncIterator, Iterator, Optional
+from typing import Any
 
 
 class MessageRole(str, Enum):
     """Role of a message in a conversation."""
+
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
@@ -23,6 +25,7 @@ class Message:
         role: The role of the message sender.
         content: The text content of the message.
     """
+
     role: MessageRole
     content: str
 
@@ -51,12 +54,13 @@ class UsageStats:
         completion_tokens: Number of tokens in the completion.
         total_tokens: Total tokens used.
     """
+
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
 
     @property
-    def cost_estimate(self) -> Optional[float]:
+    def cost_estimate(self) -> float | None:
         """Estimate cost based on token usage (not implemented for all providers)."""
         return None
 
@@ -73,12 +77,13 @@ class CompletionResponse:
         raw_response: The raw response object from the provider.
         finish_reason: Why the model stopped generating (e.g., "stop", "length").
     """
+
     content: str
     model: str
     provider: str
-    usage: Optional[UsageStats] = None
-    raw_response: Optional[Any] = None
-    finish_reason: Optional[str] = None
+    usage: UsageStats | None = None
+    raw_response: Any | None = None
+    finish_reason: str | None = None
 
 
 class LLMProvider(ABC):
@@ -107,8 +112,8 @@ class LLMProvider(ABC):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        json_schema: Optional[dict[str, Any]] = None,
+        max_tokens: int | None = None,
+        json_schema: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> CompletionResponse:
         """Execute a synchronous completion request.
@@ -135,8 +140,8 @@ class LLMProvider(ABC):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        json_schema: Optional[dict[str, Any]] = None,
+        max_tokens: int | None = None,
+        json_schema: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> CompletionResponse:
         """Execute an asynchronous completion request.
@@ -163,7 +168,7 @@ class LLMProvider(ABC):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         **kwargs: Any,
     ) -> Iterator[str]:
         """Execute a synchronous streaming completion request.
@@ -189,7 +194,7 @@ class LLMProvider(ABC):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[str]:
         """Execute an asynchronous streaming completion request.

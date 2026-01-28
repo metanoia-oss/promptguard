@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import yaml
 
@@ -21,6 +21,7 @@ class RetryConfig:
         max_delay: Maximum delay in seconds between retries.
         jitter: Whether to add random jitter to delays.
     """
+
     max_retries: int = 3
     backoff_strategy: Literal["exponential", "linear", "fixed"] = "exponential"
     base_delay: float = 1.0
@@ -38,6 +39,7 @@ class VersioningConfig:
         include_model_in_hash: Whether to include model name in hash.
         include_temperature_in_hash: Whether to include temperature in hash.
     """
+
     storage_path: Path = field(default_factory=lambda: Path(".promptguard/versions"))
     hash_algorithm: Literal["sha256", "sha1", "md5"] = "sha256"
     include_model_in_hash: bool = True
@@ -54,6 +56,7 @@ class LoggingConfig:
         log_prompts: Whether to log prompt text (privacy consideration).
         log_responses: Whether to log response text (privacy consideration).
     """
+
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     format: Literal["json", "text"] = "text"
     log_prompts: bool = False
@@ -70,6 +73,7 @@ class PromptGuardConfig:
         logging: Configuration for logging and observability.
         default_provider: Default LLM provider to use.
     """
+
     retry: RetryConfig = field(default_factory=RetryConfig)
     versioning: VersioningConfig = field(default_factory=VersioningConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
@@ -139,7 +143,9 @@ class PromptGuardConfig:
 
         return cls(
             retry=RetryConfig(**retry_data) if retry_data else RetryConfig(),
-            versioning=VersioningConfig(**versioning_data) if versioning_data else VersioningConfig(),
+            versioning=VersioningConfig(**versioning_data)
+            if versioning_data
+            else VersioningConfig(),
             logging=LoggingConfig(**logging_data) if logging_data else LoggingConfig(),
             default_provider=data.get("default_provider", "openai"),
         )

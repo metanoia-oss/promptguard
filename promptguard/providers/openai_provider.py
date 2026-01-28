@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import json
 import os
-from typing import Any, AsyncIterator, Iterator, Optional
+from collections.abc import AsyncIterator, Iterator
+from typing import Any
 
 from promptguard.core.exceptions import ProviderError
 from promptguard.providers.base import (
     CompletionResponse,
     LLMProvider,
     Message,
-    MessageRole,
     UsageStats,
 )
 from promptguard.providers.registry import ProviderRegistry
@@ -39,31 +38,35 @@ class OpenAIProvider(LLMProvider):
     provider_name = "openai"
 
     # Models supporting native structured output with JSON schema
-    STRUCTURED_OUTPUT_MODELS = frozenset({
-        "gpt-4o",
-        "gpt-4o-2024-08-06",
-        "gpt-4o-2024-11-20",
-        "gpt-4o-mini",
-        "gpt-4o-mini-2024-07-18",
-    })
+    STRUCTURED_OUTPUT_MODELS = frozenset(
+        {
+            "gpt-4o",
+            "gpt-4o-2024-08-06",
+            "gpt-4o-2024-11-20",
+            "gpt-4o-mini",
+            "gpt-4o-mini-2024-07-18",
+        }
+    )
 
     # Models supporting JSON mode
-    JSON_MODE_MODELS = frozenset({
-        "gpt-4o",
-        "gpt-4o-mini",
-        "gpt-4-turbo",
-        "gpt-4-turbo-preview",
-        "gpt-4-turbo-2024-04-09",
-        "gpt-3.5-turbo",
-        "gpt-3.5-turbo-0125",
-        "gpt-3.5-turbo-1106",
-    })
+    JSON_MODE_MODELS = frozenset(
+        {
+            "gpt-4o",
+            "gpt-4o-mini",
+            "gpt-4-turbo",
+            "gpt-4-turbo-preview",
+            "gpt-4-turbo-2024-04-09",
+            "gpt-3.5-turbo",
+            "gpt-3.5-turbo-0125",
+            "gpt-3.5-turbo-1106",
+        }
+    )
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
-        organization: Optional[str] = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        organization: str | None = None,
         timeout: float = 60.0,
     ) -> None:
         """Initialize OpenAI provider.
@@ -114,16 +117,14 @@ class OpenAIProvider(LLMProvider):
             schema["additionalProperties"] = False
             if "properties" in schema:
                 schema["properties"] = {
-                    k: self._prepare_schema_for_structured_output(v)
-                    if isinstance(v, dict) else v
+                    k: self._prepare_schema_for_structured_output(v) if isinstance(v, dict) else v
                     for k, v in schema["properties"].items()
                 }
         # Handle $defs / definitions for Pydantic models
         for defs_key in ("$defs", "definitions"):
             if defs_key in schema:
                 schema[defs_key] = {
-                    k: self._prepare_schema_for_structured_output(v)
-                    if isinstance(v, dict) else v
+                    k: self._prepare_schema_for_structured_output(v) if isinstance(v, dict) else v
                     for k, v in schema[defs_key].items()
                 }
         return schema
@@ -137,8 +138,8 @@ class OpenAIProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float,
-        max_tokens: Optional[int],
-        json_schema: Optional[dict[str, Any]],
+        max_tokens: int | None,
+        json_schema: dict[str, Any] | None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Build kwargs for OpenAI API call."""
@@ -182,8 +183,8 @@ class OpenAIProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        json_schema: Optional[dict[str, Any]] = None,
+        max_tokens: int | None = None,
+        json_schema: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> CompletionResponse:
         """Execute a synchronous completion request."""
@@ -222,8 +223,8 @@ class OpenAIProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        json_schema: Optional[dict[str, Any]] = None,
+        max_tokens: int | None = None,
+        json_schema: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> CompletionResponse:
         """Execute an asynchronous completion request."""
@@ -262,7 +263,7 @@ class OpenAIProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         **kwargs: Any,
     ) -> Iterator[str]:
         """Execute a synchronous streaming completion request."""
@@ -292,7 +293,7 @@ class OpenAIProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[str]:
         """Execute an asynchronous streaming completion request."""

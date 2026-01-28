@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import os
-from typing import Any, AsyncIterator, Iterator, Optional
+from collections.abc import AsyncIterator, Iterator
+from typing import Any
 
 from promptguard.core.exceptions import ProviderError
 from promptguard.providers.base import (
     CompletionResponse,
     LLMProvider,
     Message,
-    MessageRole,
     UsageStats,
 )
 from promptguard.providers.registry import ProviderRegistry
@@ -50,10 +50,10 @@ class LocalProvider(LLMProvider):
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        api_key: Optional[str] = None,
+        base_url: str | None = None,
+        api_key: str | None = None,
         timeout: float = 120.0,
-        server_type: Optional[str] = None,
+        server_type: str | None = None,
     ) -> None:
         """Initialize local provider.
 
@@ -73,8 +73,7 @@ class LocalProvider(LLMProvider):
             import httpx
         except ImportError:
             raise ProviderError(
-                "httpx package required for local provider. "
-                "Run: pip install httpx",
+                "httpx package required for local provider. Run: pip install httpx",
                 provider="local",
             )
 
@@ -113,8 +112,8 @@ class LocalProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        json_schema: Optional[dict[str, Any]] = None,
+        max_tokens: int | None = None,
+        json_schema: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> CompletionResponse:
         """Execute a synchronous completion request."""
@@ -165,8 +164,8 @@ class LocalProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        json_schema: Optional[dict[str, Any]] = None,
+        max_tokens: int | None = None,
+        json_schema: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> CompletionResponse:
         """Execute an asynchronous completion request."""
@@ -216,7 +215,7 @@ class LocalProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         **kwargs: Any,
     ) -> Iterator[str]:
         """Execute a synchronous streaming completion request."""
@@ -231,9 +230,7 @@ class LocalProvider(LLMProvider):
             payload["max_tokens"] = max_tokens
 
         try:
-            with self._client.stream(
-                "POST", "/chat/completions", json=payload
-            ) as response:
+            with self._client.stream("POST", "/chat/completions", json=payload) as response:
                 response.raise_for_status()
                 for line in response.iter_lines():
                     if line.startswith("data: "):
@@ -242,6 +239,7 @@ class LocalProvider(LLMProvider):
                             break
                         try:
                             import json
+
                             data = json.loads(data_str)
                             content = data["choices"][0]["delta"].get("content", "")
                             if content:
@@ -259,7 +257,7 @@ class LocalProvider(LLMProvider):
         messages: list[Message],
         model: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[str]:
         """Execute an asynchronous streaming completion request."""
@@ -285,6 +283,7 @@ class LocalProvider(LLMProvider):
                             break
                         try:
                             import json
+
                             data = json.loads(data_str)
                             content = data["choices"][0]["delta"].get("content", "")
                             if content:

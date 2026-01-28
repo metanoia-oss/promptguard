@@ -5,8 +5,9 @@ from __future__ import annotations
 import json
 import random
 import time
-from dataclasses import dataclass, field
-from typing import Any, Callable, Coroutine, Optional, TypeVar
+from collections.abc import Callable, Coroutine
+from dataclasses import dataclass
+from typing import Any, TypeVar
 
 from promptguard.core.config import RetryConfig
 from promptguard.core.exceptions import RepairExhaustedError, ValidationError
@@ -25,9 +26,10 @@ class RepairAttempt:
         error: ValidationError if the attempt failed, None if successful.
         duration_ms: Time taken for this attempt in milliseconds.
     """
+
     attempt_number: int
     raw_output: str
-    error: Optional[ValidationError]
+    error: ValidationError | None
     duration_ms: float
 
 
@@ -41,8 +43,9 @@ class RepairResult:
         attempts: List of all repair attempts made.
         total_duration_ms: Total time for all attempts in milliseconds.
     """
+
     success: bool
-    result: Optional[Any]
+    result: Any | None
     attempts: list[RepairAttempt]
     total_duration_ms: float
 
@@ -79,7 +82,7 @@ Do not include any text before or after the JSON object."""
         self,
         config: RetryConfig,
         validator: OutputValidator,
-        on_repair_attempt: Optional[Callable[[RepairAttempt], None]] = None,
+        on_repair_attempt: Callable[[RepairAttempt], None] | None = None,
     ) -> None:
         """Initialize the repair loop.
 
@@ -102,7 +105,7 @@ Do not include any text before or after the JSON object."""
             Delay in seconds.
         """
         if self.config.backoff_strategy == "exponential":
-            delay = self.config.base_delay * (2 ** attempt)
+            delay = self.config.base_delay * (2**attempt)
         elif self.config.backoff_strategy == "linear":
             delay = self.config.base_delay * (attempt + 1)
         else:  # fixed
@@ -180,7 +183,7 @@ Respond with ONLY the JSON object, no other text."""
         attempts: list[RepairAttempt] = []
         start_time = time.time()
         current_output = initial_output
-        last_error: Optional[ValidationError] = None
+        last_error: ValidationError | None = None
 
         # First, try validating the initial output
         try:
@@ -206,9 +209,7 @@ Respond with ONLY the JSON object, no other text."""
                 time.sleep(delay)
 
             # Build repair prompt
-            repair_prompt = self.build_repair_prompt(
-                original_prompt, last_error, schema
-            )
+            repair_prompt = self.build_repair_prompt(original_prompt, last_error, schema)
 
             # Get new output from LLM
             try:
@@ -285,7 +286,7 @@ class AsyncRepairLoop(RepairLoop):
         attempts: list[RepairAttempt] = []
         start_time = time.time()
         current_output = initial_output
-        last_error: Optional[ValidationError] = None
+        last_error: ValidationError | None = None
 
         # First, try validating the initial output
         try:
@@ -311,9 +312,7 @@ class AsyncRepairLoop(RepairLoop):
                 await asyncio.sleep(delay)
 
             # Build repair prompt
-            repair_prompt = self.build_repair_prompt(
-                original_prompt, last_error, schema
-            )
+            repair_prompt = self.build_repair_prompt(original_prompt, last_error, schema)
 
             # Get new output from LLM
             try:

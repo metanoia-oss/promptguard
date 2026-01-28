@@ -18,6 +18,7 @@ from promptguard import llm_call
 # Define output schema using Pydantic
 class EmailSummary(BaseModel):
     """Schema for email analysis output."""
+
     sender: str = Field(description="Email sender name")
     intent: str = Field(description="Primary intent of the email")
     urgency: int = Field(ge=1, le=5, description="Urgency level 1-5")

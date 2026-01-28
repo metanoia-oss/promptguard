@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     pass
@@ -15,6 +15,7 @@ class PromptGuardError(Exception):
     allowing users to catch all PromptGuard-related errors with
     a single except clause.
     """
+
     pass
 
 
@@ -37,9 +38,7 @@ class ValidationError(PromptGuardError):
         self.errors = errors
 
     def __str__(self) -> str:
-        error_details = "\n".join(
-            f"  - {err.get('msg', str(err))}" for err in self.errors[:5]
-        )
+        error_details = "\n".join(f"  - {err.get('msg', str(err))}" for err in self.errors[:5])
         if len(self.errors) > 5:
             error_details += f"\n  ... and {len(self.errors) - 5} more errors"
         return f"{self.args[0]}\nErrors:\n{error_details}"
@@ -84,8 +83,8 @@ class ProviderError(PromptGuardError):
         self,
         message: str,
         provider: str,
-        status_code: Optional[int] = None,
-        response_body: Optional[str] = None,
+        status_code: int | None = None,
+        response_body: str | None = None,
     ) -> None:
         super().__init__(message)
         self.provider = provider
@@ -110,13 +109,11 @@ class ProviderNotFoundError(PromptGuardError):
     def __init__(
         self,
         provider: str,
-        install_hint: Optional[str] = None,
+        install_hint: str | None = None,
     ) -> None:
         self.provider = provider
         self.install_hint = install_hint or f"pip install promptguard[{provider}]"
-        super().__init__(
-            f"Provider '{provider}' not found. Install with: {self.install_hint}"
-        )
+        super().__init__(f"Provider '{provider}' not found. Install with: {self.install_hint}")
 
 
 class SchemaError(PromptGuardError):
@@ -130,8 +127,8 @@ class SchemaError(PromptGuardError):
     def __init__(
         self,
         message: str,
-        schema_type: Optional[str] = None,
-        reason: Optional[str] = None,
+        schema_type: str | None = None,
+        reason: str | None = None,
     ) -> None:
         super().__init__(message)
         self.schema_type = schema_type
@@ -148,7 +145,7 @@ class ConfigurationError(PromptGuardError):
     def __init__(
         self,
         message: str,
-        config_key: Optional[str] = None,
+        config_key: str | None = None,
     ) -> None:
         super().__init__(message)
         self.config_key = config_key

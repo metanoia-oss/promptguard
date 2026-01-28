@@ -6,13 +6,13 @@ import json
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from promptguard.core.config import PromptGuardConfig, RetryConfig
 from promptguard.core.hashing import PromptHasher, PromptVersion, VersionStore
 from promptguard.core.repair import AsyncRepairLoop, RepairLoop
 from promptguard.core.validator import OutputValidator
-from promptguard.providers.base import CompletionResponse, LLMProvider, Message, MessageRole
+from promptguard.providers.base import LLMProvider, Message, MessageRole
 from promptguard.providers.registry import ProviderRegistry
 from promptguard.schemas.adapters import create_adapter
 
@@ -33,13 +33,14 @@ class LLMCallResult(Generic[T]):
         usage: Token usage statistics if available.
         duration_ms: Total execution time in milliseconds.
     """
+
     data: T
     raw_response: str
     model: str
     provider: str
-    version_hash: Optional[str]
+    version_hash: str | None
     repair_attempts: int
-    usage: Optional[dict[str, int]]
+    usage: dict[str, int] | None
     duration_ms: float
 
 
@@ -61,7 +62,7 @@ class PromptGuardEngine:
         )
     """
 
-    def __init__(self, config: Optional[PromptGuardConfig] = None) -> None:
+    def __init__(self, config: PromptGuardConfig | None = None) -> None:
         """Initialize the engine.
 
         Args:
@@ -114,7 +115,7 @@ class PromptGuardEngine:
     def _build_system_prompt(
         self,
         schema: dict[str, Any],
-        user_system_prompt: Optional[str],
+        user_system_prompt: str | None,
     ) -> str:
         """Build system prompt with schema instructions.
 
@@ -143,12 +144,12 @@ Respond with ONLY the JSON object."""
         prompt: str,
         model: str,
         schema: Any,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        retry_config: Optional[RetryConfig] = None,
+        max_tokens: int | None = None,
+        retry_config: RetryConfig | None = None,
         save_version: bool = True,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> LLMCallResult[T]:
         """Execute an LLM call with schema validation and auto-repair.
 
@@ -275,12 +276,12 @@ Respond with ONLY the JSON object."""
         prompt: str,
         model: str,
         schema: Any,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        retry_config: Optional[RetryConfig] = None,
+        max_tokens: int | None = None,
+        retry_config: RetryConfig | None = None,
         save_version: bool = True,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> LLMCallResult[T]:
         """Async version of call().
 
@@ -373,7 +374,7 @@ Respond with ONLY the JSON object."""
 
 
 # Global engine instance
-_engine: Optional[PromptGuardEngine] = None
+_engine: PromptGuardEngine | None = None
 
 
 def get_engine() -> PromptGuardEngine:

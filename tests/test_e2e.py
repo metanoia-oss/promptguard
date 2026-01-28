@@ -6,7 +6,6 @@ These tests verify complete workflows work correctly.
 import json
 import os
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
@@ -20,11 +19,6 @@ class TestPackageImport:
     def test_main_imports(self):
         """Test main module imports."""
         from promptguard import (
-            PromptGuardConfig,
-            PromptGuardError,
-            RepairExhaustedError,
-            RetryConfig,
-            ValidationError,
             allm_call,
             llm_call,
         )
@@ -35,12 +29,7 @@ class TestPackageImport:
     def test_provider_imports(self):
         """Test provider imports."""
         from promptguard.providers import (
-            CompletionResponse,
-            LLMProvider,
-            Message,
-            MessageRole,
             ProviderRegistry,
-            UsageStats,
         )
 
         assert ProviderRegistry is not None
@@ -48,11 +37,6 @@ class TestPackageImport:
     def test_schema_imports(self):
         """Test schema adapter imports."""
         from promptguard.schemas import (
-            DataclassAdapter,
-            JSONSchemaAdapter,
-            PydanticAdapter,
-            SchemaAdapter,
-            TypedDictAdapter,
             create_adapter,
         )
 
@@ -61,9 +45,6 @@ class TestPackageImport:
     def test_testing_imports(self):
         """Test testing module imports."""
         from promptguard.testing import (
-            Snapshot,
-            SnapshotDiff,
-            SnapshotMatcher,
             SnapshotStore,
         )
 
@@ -194,10 +175,7 @@ class TestCLIStats:
             assert "Statistics" in result.stdout or "0" in result.stdout
 
 
-@pytest.mark.skipif(
-    not os.getenv("OPENAI_API_KEY"),
-    reason="OPENAI_API_KEY not set"
-)
+@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 class TestCLIRunWithAPI:
     """Test CLI run command with real API calls."""
 
@@ -226,8 +204,11 @@ class TestCLIRunWithAPI:
             # Run the prompt
             result = subprocess.run(
                 [
-                    "promptguard", "run", str(prompt_file),
-                    "-i", '{"text": "Alice is 30 years old"}',
+                    "promptguard",
+                    "run",
+                    str(prompt_file),
+                    "-i",
+                    '{"text": "Alice is 30 years old"}',
                 ],
                 cwd=tmpdir,
                 capture_output=True,
@@ -250,15 +231,11 @@ class TestCLIRunWithAPI:
 class TestFullWorkflow:
     """Test complete end-to-end workflows."""
 
-    @pytest.mark.skipif(
-        not os.getenv("OPENAI_API_KEY"),
-        reason="OPENAI_API_KEY not set"
-    )
+    @pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     def test_python_api_workflow(self):
         """Test complete Python API workflow."""
         from pydantic import BaseModel
 
-        from promptguard import llm_call
         from promptguard.core.config import PromptGuardConfig, VersioningConfig
         from promptguard.core.engine import PromptGuardEngine
 
@@ -269,9 +246,7 @@ class TestFullWorkflow:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Setup engine with temp storage
-            config = PromptGuardConfig(
-                versioning=VersioningConfig(storage_path=Path(tmpdir))
-            )
+            config = PromptGuardConfig(versioning=VersioningConfig(storage_path=Path(tmpdir)))
             engine = PromptGuardEngine(config)
 
             # Make a call

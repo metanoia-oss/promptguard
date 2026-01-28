@@ -1,7 +1,7 @@
 """Tests for schema adapters."""
 
 from dataclasses import dataclass
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import pytest
 from pydantic import BaseModel

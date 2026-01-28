@@ -7,7 +7,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 
 @dataclass
@@ -26,10 +26,11 @@ class PromptVersion:
         created_at: When this version was created.
         metadata: Additional metadata.
     """
+
     hash: str
     prompt: str
     model: str
-    schema_hash: Optional[str]
+    schema_hash: str | None
     temperature: float
     created_at: datetime
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -102,9 +103,9 @@ class PromptHasher:
     def hash_prompt(
         self,
         prompt: str,
-        model: Optional[str] = None,
-        temperature: Optional[float] = None,
-        schema: Optional[dict[str, Any]] = None,
+        model: str | None = None,
+        temperature: float | None = None,
+        schema: dict[str, Any] | None = None,
     ) -> str:
         """Generate a stable hash for a prompt configuration.
 
@@ -128,19 +129,19 @@ class PromptHasher:
 
         # Optionally include model
         if self.include_model and model:
-            hasher.update(f"|model:{model}".encode("utf-8"))
+            hasher.update(f"|model:{model}".encode())
 
         # Optionally include temperature
         if self.include_temperature and temperature is not None:
-            hasher.update(f"|temp:{temperature}".encode("utf-8"))
+            hasher.update(f"|temp:{temperature}".encode())
 
         # Include schema if provided
         if schema:
             # Sort keys for deterministic hashing
             schema_str = json.dumps(schema, sort_keys=True)
-            hasher.update(f"|schema:{schema_str}".encode("utf-8"))
+            hasher.update(f"|schema:{schema_str}".encode())
 
-        return hasher.hexdigest()[:self.hash_length]
+        return hasher.hexdigest()[: self.hash_length]
 
     def hash_schema(self, schema: dict[str, Any]) -> str:
         """Generate a hash for a schema.
@@ -154,7 +155,7 @@ class PromptHasher:
         hasher = self._get_hasher()
         schema_str = json.dumps(schema, sort_keys=True)
         hasher.update(schema_str.encode("utf-8"))
-        return hasher.hexdigest()[:self.hash_length]
+        return hasher.hexdigest()[: self.hash_length]
 
     def hash_content(self, content: str) -> str:
         """Generate a hash for arbitrary content.
@@ -167,7 +168,7 @@ class PromptHasher:
         """
         hasher = self._get_hasher()
         hasher.update(content.encode("utf-8"))
-        return hasher.hexdigest()[:self.hash_length]
+        return hasher.hexdigest()[: self.hash_length]
 
 
 class VersionStore:
@@ -199,7 +200,7 @@ class VersionStore:
             try:
                 with open(self._index_path) as f:
                     return json.load(f)
-            except (json.JSONDecodeError, IOError):
+            except (OSError, json.JSONDecodeError):
                 return {}
         return {}
 
@@ -232,7 +233,7 @@ class VersionStore:
 
         return version.hash
 
-    def load(self, hash: str) -> Optional[PromptVersion]:
+    def load(self, hash: str) -> PromptVersion | None:
         """Load a prompt version by hash.
 
         Args:
@@ -250,7 +251,7 @@ class VersionStore:
             with open(version_file) as f:
                 data = json.load(f)
             return PromptVersion.from_dict(data)
-        except (json.JSONDecodeError, IOError, KeyError):
+        except (OSError, json.JSONDecodeError, KeyError):
             return None
 
     def list_versions(self, limit: int = 50) -> list[dict[str, Any]]:

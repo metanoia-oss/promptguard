@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Type
+from typing import Any
 
 from promptguard.core.exceptions import ProviderNotFoundError
 from promptguard.providers.base import LLMProvider
@@ -24,8 +24,8 @@ class ProviderRegistry:
         provider = ProviderRegistry.get("my_provider")
     """
 
-    _providers: Dict[str, Type[LLMProvider]] = {}
-    _instances: Dict[str, LLMProvider] = {}
+    _providers: dict[str, type[LLMProvider]] = {}
+    _instances: dict[str, LLMProvider] = {}
     _loaded_modules: set[str] = set()
 
     @classmethod
@@ -43,9 +43,11 @@ class ProviderRegistry:
             class OpenAIProvider(LLMProvider):
                 ...
         """
-        def decorator(provider_cls: Type[LLMProvider]) -> Type[LLMProvider]:
+
+        def decorator(provider_cls: type[LLMProvider]) -> type[LLMProvider]:
             cls._providers[name] = provider_cls
             return provider_cls
+
         return decorator
 
     @classmethod

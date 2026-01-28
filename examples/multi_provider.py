@@ -21,6 +21,7 @@ from promptguard.core.exceptions import ProviderNotFoundError
 
 class Translation(BaseModel):
     """Schema for translation output."""
+
     original: str = Field(description="Original text")
     translated: str = Field(description="Translated text")
     source_language: str = Field(description="Detected source language")

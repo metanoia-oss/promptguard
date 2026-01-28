@@ -25,6 +25,7 @@ from promptguard import (
 
 class DataPoint(BaseModel):
     """Schema for extracted data points."""
+
     value: float = Field(description="Numeric value")
     unit: str = Field(description="Unit of measurement")
     context: str = Field(description="Context for the value")

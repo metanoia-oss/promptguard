@@ -26,7 +26,8 @@ def test_imports():
     print("\n--- Testing Imports ---")
 
     try:
-        from promptguard import llm_call, allm_call
+        from promptguard import allm_call, llm_call
+
         print_status("Core imports (llm_call, allm_call)")
     except ImportError as e:
         print_status(f"Core imports: {e}", False)
@@ -34,27 +35,31 @@ def test_imports():
 
     try:
         from promptguard import PromptGuardConfig, RetryConfig, ValidationError
+
         print_status("Config imports")
     except ImportError as e:
         print_status(f"Config imports: {e}", False)
         return False
 
     try:
-        from promptguard.providers import ProviderRegistry, LLMProvider
+        from promptguard.providers import LLMProvider, ProviderRegistry
+
         print_status("Provider imports")
     except ImportError as e:
         print_status(f"Provider imports: {e}", False)
         return False
 
     try:
-        from promptguard.schemas import create_adapter, PydanticAdapter
+        from promptguard.schemas import PydanticAdapter, create_adapter
+
         print_status("Schema imports")
     except ImportError as e:
         print_status(f"Schema imports: {e}", False)
         return False
 
     try:
-        from promptguard.testing import SnapshotStore, SnapshotMatcher
+        from promptguard.testing import SnapshotMatcher, SnapshotStore
+
         print_status("Testing imports")
     except ImportError as e:
         print_status(f"Testing imports: {e}", False)
@@ -68,6 +73,7 @@ def test_schema_validation():
     print("\n--- Testing Schema Validation ---")
 
     from pydantic import BaseModel
+
     from promptguard.core.validator import OutputValidator
 
     class Person(BaseModel):
@@ -97,6 +103,7 @@ def test_schema_validation():
 
     # Test invalid JSON
     from promptguard.core.exceptions import ValidationError
+
     try:
         validator.validate('{"name": "Test"}')  # Missing age
         print_status("Invalid JSON detection", False)
@@ -123,10 +130,7 @@ def test_config():
         return False
 
     try:
-        config = PromptGuardConfig(
-            retry=RetryConfig(max_retries=5),
-            default_provider="anthropic"
-        )
+        config = PromptGuardConfig(retry=RetryConfig(max_retries=5), default_provider="anthropic")
         assert config.retry.max_retries == 5
         print_status("Custom config creation")
     except Exception as e:
@@ -141,6 +145,7 @@ def test_version_store():
     print("\n--- Testing Version Store ---")
 
     from datetime import datetime
+
     from promptguard.core.hashing import PromptHasher, PromptVersion, VersionStore
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -241,6 +246,7 @@ def test_llm_call():
         return True
 
     from pydantic import BaseModel
+
     from promptguard import llm_call
 
     class Person(BaseModel):
@@ -274,7 +280,9 @@ def test_async_call():
         return True
 
     import asyncio
+
     from pydantic import BaseModel
+
     from promptguard import allm_call
 
     class Person(BaseModel):

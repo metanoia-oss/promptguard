@@ -18,20 +18,19 @@ import pytest
 from pydantic import BaseModel, Field
 
 # Skip all tests in this module if no API key
-pytestmark = pytest.mark.skipif(
-    not os.getenv("OPENAI_API_KEY"),
-    reason="OPENAI_API_KEY not set"
-)
+pytestmark = pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 
 
 class PersonSchema(BaseModel):
     """Test schema for person extraction."""
+
     name: str = Field(description="Person's full name")
     age: int = Field(description="Person's age in years")
 
 
 class EmailAnalysis(BaseModel):
     """Test schema for email analysis."""
+
     sender: str
     intent: str
     urgency: int = Field(ge=1, le=5)
@@ -40,6 +39,7 @@ class EmailAnalysis(BaseModel):
 
 class OrderSchema(BaseModel):
     """Test schema for order extraction."""
+
     product: str
     quantity: int
     price: float
@@ -47,6 +47,7 @@ class OrderSchema(BaseModel):
 
 class PersonTypedDict(TypedDict):
     """TypedDict version of person schema."""
+
     name: str
     age: int
 
@@ -54,6 +55,7 @@ class PersonTypedDict(TypedDict):
 @dataclass
 class PersonDataclass:
     """Dataclass version of person schema."""
+
     name: str
     age: int
 
@@ -243,14 +245,11 @@ class TestVersionPersistence:
 
     def test_version_saved(self):
         """Test that a version is saved after a call."""
-        from promptguard import llm_call
         from promptguard.core.config import PromptGuardConfig, VersioningConfig
         from promptguard.core.engine import PromptGuardEngine
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            config = PromptGuardConfig(
-                versioning=VersioningConfig(storage_path=Path(tmpdir))
-            )
+            config = PromptGuardConfig(versioning=VersioningConfig(storage_path=Path(tmpdir)))
             engine = PromptGuardEngine(config)
 
             result = engine.call(
@@ -275,9 +274,7 @@ class TestVersionPersistence:
         from promptguard.core.engine import PromptGuardEngine
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            config = PromptGuardConfig(
-                versioning=VersioningConfig(storage_path=Path(tmpdir))
-            )
+            config = PromptGuardConfig(versioning=VersioningConfig(storage_path=Path(tmpdir)))
             engine = PromptGuardEngine(config)
 
             # Make multiple calls

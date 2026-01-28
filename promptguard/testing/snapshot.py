@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 
 @dataclass
@@ -26,6 +27,7 @@ class Snapshot:
         captured_at: When this snapshot was captured.
         metadata: Additional metadata.
     """
+
     prompt_hash: str
     prompt: str
     model: str
@@ -79,6 +81,7 @@ class SnapshotDiff:
         actual: Actual value.
         diff_type: Type of difference.
     """
+
     field_path: str
     expected: Any
     actual: Any
@@ -119,7 +122,7 @@ class SnapshotStore:
         with open(path, "w") as f:
             json.dump(snapshot.to_dict(), f, indent=2, default=str)
 
-    def load(self, prompt_hash: str) -> Optional[Snapshot]:
+    def load(self, prompt_hash: str) -> Snapshot | None:
         """Load a snapshot by hash.
 
         Args:
@@ -136,7 +139,7 @@ class SnapshotStore:
             with open(path) as f:
                 data = json.load(f)
             return Snapshot.from_dict(data)
-        except (json.JSONDecodeError, IOError, KeyError):
+        except (OSError, json.JSONDecodeError, KeyError):
             return None
 
     def exists(self, prompt_hash: str) -> bool:
@@ -200,9 +203,9 @@ class SnapshotMatcher:
 
     def __init__(
         self,
-        semantic_comparator: Optional[Callable[[Any, Any], float]] = None,
+        semantic_comparator: Callable[[Any, Any], float] | None = None,
         semantic_threshold: float = 0.85,
-        ignore_fields: Optional[list[str]] = None,
+        ignore_fields: list[str] | None = None,
     ) -> None:
         """Initialize the matcher.
 
@@ -261,23 +264,25 @@ class SnapshotMatcher:
                     continue
 
                 if key not in actual:
-                    diffs.append(SnapshotDiff(
-                        field_path=new_path,
-                        expected=expected[key],
-                        actual=None,
-                        diff_type="field_removed",
-                    ))
-                elif key not in expected:
-                    diffs.append(SnapshotDiff(
-                        field_path=new_path,
-                        expected=None,
-                        actual=actual[key],
-                        diff_type="field_added",
-                    ))
-                else:
-                    self._compare_recursive(
-                        expected[key], actual[key], new_path, diffs
+                    diffs.append(
+                        SnapshotDiff(
+                            field_path=new_path,
+                            expected=expected[key],
+                            actual=None,
+                            diff_type="field_removed",
+                        )
                     )
+                elif key not in expected:
+                    diffs.append(
+                        SnapshotDiff(
+                            field_path=new_path,
+                            expected=None,
+                            actual=actual[key],
+                            diff_type="field_added",
+                        )
+                    )
+                else:
+                    self._compare_recursive(expected[key], actual[key], new_path, diffs)
             return
 
         # Handle list comparison
@@ -286,53 +291,55 @@ class SnapshotMatcher:
             for i in range(max_len):
                 new_path = f"{path}[{i}]"
                 if i >= len(actual):
-                    diffs.append(SnapshotDiff(
-                        field_path=new_path,
-                        expected=expected[i],
-                        actual=None,
-                        diff_type="field_removed",
-                    ))
-                elif i >= len(expected):
-                    diffs.append(SnapshotDiff(
-                        field_path=new_path,
-                        expected=None,
-                        actual=actual[i],
-                        diff_type="field_added",
-                    ))
-                else:
-                    self._compare_recursive(
-                        expected[i], actual[i], new_path, diffs
+                    diffs.append(
+                        SnapshotDiff(
+                            field_path=new_path,
+                            expected=expected[i],
+                            actual=None,
+                            diff_type="field_removed",
+                        )
                     )
+                elif i >= len(expected):
+                    diffs.append(
+                        SnapshotDiff(
+                            field_path=new_path,
+                            expected=None,
+                            actual=actual[i],
+                            diff_type="field_added",
+                        )
+                    )
+                else:
+                    self._compare_recursive(expected[i], actual[i], new_path, diffs)
             return
 
         # Handle type mismatch
-        if type(expected) != type(actual):
-            diffs.append(SnapshotDiff(
-                field_path=path,
-                expected=expected,
-                actual=actual,
-                diff_type="type_changed",
-            ))
+        if type(expected) is not type(actual):
+            diffs.append(
+                SnapshotDiff(
+                    field_path=path,
+                    expected=expected,
+                    actual=actual,
+                    diff_type="type_changed",
+                )
+            )
             return
 
         # Handle value comparison
         if expected != actual:
             # Try semantic comparison for strings
-            if (
-                isinstance(expected, str) and
-                isinstance(actual, str) and
-                self.semantic_comparator
-            ):
+            if isinstance(expected, str) and isinstance(actual, str) and self.semantic_comparator:
                 similarity = self.semantic_comparator(expected, actual)
                 if similarity >= self.semantic_threshold:
                     return  # Semantically equivalent
 
-            diffs.append(SnapshotDiff(
-                field_path=path or "root",
-                expected=expected,
-                actual=actual,
-                diff_type="value_changed",
-            ))
+            diffs.append(
+                SnapshotDiff(
+                    field_path=path or "root",
+                    expected=expected,
+                    actual=actual,
+                    diff_type="value_changed",
+                )
+            )
 
     def is_match(self, expected: Snapshot, actual: Any) -> bool:
         """Check if actual output matches expected snapshot.
@@ -363,8 +370,7 @@ class SnapshotMatcher:
         for diff in diffs:
             if diff.diff_type == "value_changed":
                 lines.append(
-                    f"  {diff.field_path}: "
-                    f"expected {diff.expected!r}, got {diff.actual!r}"
+                    f"  {diff.field_path}: expected {diff.expected!r}, got {diff.actual!r}"
                 )
             elif diff.diff_type == "field_added":
                 lines.append(f"  {diff.field_path}: unexpected field with value {diff.actual!r}")

@@ -11,6 +11,7 @@ from promptguard.core.validator import OutputValidator
 
 class Person(BaseModel):
     """Test schema."""
+
     name: str
     age: int
 

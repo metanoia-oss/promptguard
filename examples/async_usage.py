@@ -19,6 +19,7 @@ from promptguard import allm_call
 
 class SentimentResult(BaseModel):
     """Schema for sentiment analysis output."""
+
     sentiment: str = Field(description="positive, negative, or neutral")
     confidence: float = Field(ge=0, le=1, description="Confidence score")
     keywords: list[str] = Field(description="Key words that indicate sentiment")
@@ -53,7 +54,7 @@ async def main():
 
     results = await analyze_reviews(reviews)
 
-    for review, result in zip(reviews, results):
+    for review, result in zip(reviews, results, strict=False):
         print(f"Review: {review[:50]}...")
         print(f"  Sentiment: {result.sentiment}")
         print(f"  Confidence: {result.confidence:.0%}")

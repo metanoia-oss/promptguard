@@ -6,7 +6,7 @@ import json
 from abc import ABC, abstractmethod
 from dataclasses import fields as dataclass_fields
 from dataclasses import is_dataclass
-from typing import Any, Type, TypeVar, Union, get_args, get_origin, get_type_hints
+from typing import Any, TypeVar, Union, get_args, get_origin, get_type_hints
 
 from promptguard.core.exceptions import SchemaError
 
@@ -82,7 +82,7 @@ class PydanticAdapter(SchemaAdapter):
         result = adapter.validate({"name": "John", "age": 30})
     """
 
-    def __init__(self, model: Type[Any]) -> None:
+    def __init__(self, model: type[Any]) -> None:
         """Initialize with a Pydantic model.
 
         Args:
@@ -157,7 +157,7 @@ class TypedDictAdapter(SchemaAdapter):
         adapter = TypedDictAdapter(Person)
     """
 
-    def __init__(self, typed_dict: Type[Any]) -> None:
+    def __init__(self, typed_dict: type[Any]) -> None:
         """Initialize with a TypedDict class.
 
         Args:
@@ -167,8 +167,7 @@ class TypedDictAdapter(SchemaAdapter):
             SchemaError: If not a valid TypedDict.
         """
         # Check if it's a TypedDict
-        if not (hasattr(typed_dict, "__annotations__") and
-                hasattr(typed_dict, "__total__")):
+        if not (hasattr(typed_dict, "__annotations__") and hasattr(typed_dict, "__total__")):
             raise SchemaError(
                 f"Expected TypedDict, got {type(typed_dict)}",
                 schema_type=str(type(typed_dict)),
@@ -193,7 +192,7 @@ class TypedDictAdapter(SchemaAdapter):
             "additionalProperties": False,
         }
 
-    def _type_to_schema(self, type_hint: Type[Any]) -> dict[str, Any]:
+    def _type_to_schema(self, type_hint: type[Any]) -> dict[str, Any]:
         """Convert a Python type hint to JSON Schema."""
         origin = get_origin(type_hint)
         args = get_args(type_hint)
@@ -256,21 +255,25 @@ class TypedDictAdapter(SchemaAdapter):
         # Check required fields
         for field in self._required:
             if field not in data:
-                errors.append({
-                    "type": "missing",
-                    "loc": [field],
-                    "msg": f"Field required",
-                })
+                errors.append(
+                    {
+                        "type": "missing",
+                        "loc": [field],
+                        "msg": "Field required",
+                    }
+                )
 
         # Check for extra fields
         allowed = set(self._hints.keys())
         for key in data.keys():
             if key not in allowed:
-                errors.append({
-                    "type": "extra_forbidden",
-                    "loc": [key],
-                    "msg": "Extra inputs are not permitted",
-                })
+                errors.append(
+                    {
+                        "type": "extra_forbidden",
+                        "loc": [key],
+                        "msg": "Extra inputs are not permitted",
+                    }
+                )
 
         return errors
 
@@ -293,7 +296,7 @@ class DataclassAdapter(SchemaAdapter):
         adapter = DataclassAdapter(Person)
     """
 
-    def __init__(self, dataclass_type: Type[Any]) -> None:
+    def __init__(self, dataclass_type: type[Any]) -> None:
         """Initialize with a dataclass.
 
         Args:
@@ -389,11 +392,13 @@ class DataclassAdapter(SchemaAdapter):
         try:
             self.dataclass_type(**data)
         except TypeError as e:
-            errors.append({
-                "type": "type_error",
-                "msg": str(e),
-                "loc": [],
-            })
+            errors.append(
+                {
+                    "type": "type_error",
+                    "msg": str(e),
+                    "loc": [],
+                }
+            )
 
         return errors
 
@@ -442,6 +447,7 @@ class JSONSchemaAdapter(SchemaAdapter):
 
         try:
             import jsonschema
+
             jsonschema.validate(data, self.schema)
         except ImportError:
             # Fall back to basic validation if jsonschema not installed
@@ -459,6 +465,7 @@ class JSONSchemaAdapter(SchemaAdapter):
 
         try:
             import jsonschema
+
             validator = jsonschema.Draft7Validator(self.schema)
             errors = list(validator.iter_errors(data))
             return [
@@ -519,6 +526,7 @@ def create_adapter(schema: Any) -> SchemaAdapter:
     # Check for Pydantic BaseModel
     try:
         from pydantic import BaseModel
+
         if issubclass(schema, BaseModel):
             return PydanticAdapter(schema)
     except ImportError:

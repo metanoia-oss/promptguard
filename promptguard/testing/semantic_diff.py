@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 
 class SemanticComparator:
@@ -35,6 +35,7 @@ class SemanticComparator:
         if self._model is None:
             try:
                 from sentence_transformers import SentenceTransformer
+
                 self._model = SentenceTransformer(self._model_name)
             except ImportError:
                 raise ImportError(
@@ -216,7 +217,7 @@ Respond with a JSON object:
 
 def create_semantic_comparator(
     use_llm: bool = False,
-    model_name: Optional[str] = None,
+    model_name: str | None = None,
 ) -> callable:
     """Factory function to create a semantic comparator function.
 
