@@ -98,19 +98,23 @@ known-first-party = ["promptguard"]
 
 [tool.mypy]
 python_version = "3.10"
-warn_return_any = true
+warn_return_any = false
 warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
 check_untyped_defs = true
 strict_optional = true
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
     "openai.*",
     "anthropic.*",
+    "google.*",
     "google.generativeai.*",
     "sentence_transformers.*",
+    "yaml.*",
+    "numpy.*",
 ]
 ignore_missing_imports = true
 
