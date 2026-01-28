@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "promptguard"
+name = "llm-promptguard"
 version = "0.1.0"
 description = "Reliable, structured, production-safe LLM outputs with schema validation and auto-repair"
 readme = "README.md"

@@ -56,13 +56,13 @@ No silent failures.
 ## Installation
 
 ```bash
-pip install promptguard
+pip install llm-promptguard
 
 # With provider-specific dependencies
-pip install promptguard[openai]
-pip install promptguard[anthropic]
-pip install promptguard[google]
-pip install promptguard[all]
+pip install llm-promptguard[openai]
+pip install llm-promptguard[anthropic]
+pip install llm-promptguard[google]
+pip install llm-promptguard[all]
 ```
 
 ---

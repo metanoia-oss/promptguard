@@ -42,7 +42,7 @@ Open an issue with the `[Feature]` prefix. Describe the problem you're solving, 
    ```bash
    python -m venv .venv
    source .venv/bin/activate
-   pip install -e ".[dev]"
+   pip install -e ".[dev]"  # PyPI package: llm-promptguard
    ```
 
 3. **Make your changes.** Keep them focused. One PR, one concern.
