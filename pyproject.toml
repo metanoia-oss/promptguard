@@ -63,7 +63,7 @@ promptguard = "promptguard.cli.main:cli"
 
 [project.urls]
 Homepage = "https://github.com/metanoia-oss/promptguard"
-Documentation = "https://github.com/metanoia-oss/promptguard"
+Documentation = "https://metanoia-oss.github.io/promptguard/"
 Repository = "https://github.com/metanoia-oss/promptguard"
 Issues = "https://github.com/metanoia-oss/promptguard/issues"
 

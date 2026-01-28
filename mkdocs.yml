@@ -1,0 +1,45 @@
+site_name: PromptGuard
+site_url: https://metanoia-oss.github.io/promptguard/
+repo_url: https://github.com/metanoia-oss/promptguard
+repo_name: metanoia-oss/promptguard
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.suggest
+
+nav:
+  - Home: index.md
+  - Quick Start: quickstart.md
+  - API Reference: api.md
+  - Providers: providers.md
+  - Testing: testing.md
+  - CLI Reference: cli.md
+  - Migration Guide: migration.md
+  - Blog:
+    - Launch: blog/launch.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonitions
+  - tables

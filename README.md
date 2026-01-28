@@ -1,5 +1,10 @@
 # PromptGuard
 
+[![CI](https://github.com/metanoia-oss/promptguard/actions/workflows/ci.yml/badge.svg)](https://github.com/metanoia-oss/promptguard/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/llm-promptguard.svg)](https://pypi.org/project/llm-promptguard/)
+[![Python versions](https://img.shields.io/pypi/pyversions/llm-promptguard.svg)](https://pypi.org/project/llm-promptguard/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
 **Never parse LLM output again.**
 
 LLMs are probabilistic.
@@ -50,6 +55,21 @@ These failures cause:
 No regex.
 No fragile parsing.
 No silent failures.
+
+---
+
+## Why PromptGuard Over Alternatives?
+
+| Feature | PromptGuard | Instructor | Outlines |
+|---------|------------|-----------|----------|
+| Auto repair loop | Yes (N retries) | 1 retry | No |
+| Multi-provider | 4 built-in | OpenAI-centric | Multiple |
+| Prompt versioning | Built-in | No | No |
+| Regression testing | Built-in | No | No |
+| Schema types | 4 (Pydantic, TypedDict, dataclass, JSON) | Pydantic | Limited |
+| CLI tooling | Yes | No | No |
+
+PromptGuard is a **reliability layer**, not just a parser. Versioning + testing + repair in one package.
 
 ---
 
@@ -321,6 +341,12 @@ promptguard stats          # Show statistics
 - ./scripts/test_all.sh
 
 ---
+## Documentation
+
+Full docs at [metanoia-oss.github.io/promptguard](https://metanoia-oss.github.io/promptguard/).
+
+---
+
 ## License
 
 Apache 2.0
