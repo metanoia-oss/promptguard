@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://metanoia-oss.github.io/promptguard/</loc>
+         <lastmod>2026-01-29</lastmod>
+    </url>
+    <url>
+         <loc>https://metanoia-oss.github.io/promptguard/api/</loc>
+         <lastmod>2026-01-29</lastmod>
+    </url>
+    <url>
+         <loc>https://metanoia-oss.github.io/promptguard/cli/</loc>
+         <lastmod>2026-01-29</lastmod>
+    </url>
+    <url>
+         <loc>https://metanoia-oss.github.io/promptguard/migration/</loc>
+         <lastmod>2026-01-29</lastmod>
+    </url>
+    <url>
+         <loc>https://metanoia-oss.github.io/promptguard/providers/</loc>
+         <lastmod>2026-01-29</lastmod>
+    </url>
+    <url>
+         <loc>https://metanoia-oss.github.io/promptguard/quickstart/</loc>
+         <lastmod>2026-01-29</lastmod>
+    </url>
+    <url>
+         <loc>https://metanoia-oss.github.io/promptguard/testing/</loc>
+         <lastmod>2026-01-29</lastmod>
+    </url>
+    <url>
+         <loc>https://metanoia-oss.github.io/promptguard/blog/launch/</loc>
+         <lastmod>2026-01-29</lastmod>
+    </url>
+</urlset>
