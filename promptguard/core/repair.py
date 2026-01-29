@@ -11,7 +11,10 @@ from typing import Any, TypeVar
 
 from promptguard.core.config import RetryConfig
 from promptguard.core.exceptions import RepairExhaustedError, ValidationError
+from promptguard.core.logging import get_logger
 from promptguard.core.validator import OutputValidator
+
+logger = get_logger(__name__)
 
 T = TypeVar("T")
 
@@ -188,6 +191,7 @@ Respond with ONLY the JSON object, no other text."""
         # First, try validating the initial output
         try:
             result = self.validator.validate(current_output)
+            logger.debug("Initial output validated successfully")
             return RepairResult(
                 success=True,
                 result=result,
@@ -196,6 +200,7 @@ Respond with ONLY the JSON object, no other text."""
             )
         except ValidationError as e:
             last_error = e
+            logger.warning("Initial validation failed, starting repair loop")
 
         schema = self.validator.get_json_schema()
 
@@ -206,7 +211,10 @@ Respond with ONLY the JSON object, no other text."""
             # Apply delay before retry (except first attempt)
             if attempt > 0:
                 delay = self.calculate_delay(attempt - 1)
+                logger.debug("Waiting %.2fs before retry attempt %d", delay, attempt + 1)
                 time.sleep(delay)
+
+            logger.info("Starting repair attempt %d/%d", attempt + 1, self.config.max_retries)
 
             # Build repair prompt
             repair_prompt = self.build_repair_prompt(original_prompt, last_error, schema)
@@ -228,6 +236,11 @@ Respond with ONLY the JSON object, no other text."""
                 if self.on_repair_attempt:
                     self.on_repair_attempt(attempt_record)
 
+                logger.info(
+                    "Repair succeeded on attempt %d",
+                    attempt + 1,
+                    extra={"attempt": attempt + 1},
+                )
                 return RepairResult(
                     success=True,
                     result=result,
@@ -248,7 +261,19 @@ Respond with ONLY the JSON object, no other text."""
                 if self.on_repair_attempt:
                     self.on_repair_attempt(attempt_record)
 
+                logger.warning(
+                    "Repair attempt %d failed: %s",
+                    attempt + 1,
+                    e.args[0] if e.args else str(e),
+                    extra={"attempt": attempt + 1},
+                )
+
         # All retries exhausted
+        logger.error(
+            "Repair exhausted after %d attempts",
+            self.config.max_retries,
+            extra={"attempts": len(attempts)},
+        )
         raise RepairExhaustedError(
             f"Failed to get valid output after {self.config.max_retries} repair attempts",
             attempts=len(attempts),
@@ -291,6 +316,7 @@ class AsyncRepairLoop(RepairLoop):
         # First, try validating the initial output
         try:
             result = self.validator.validate(current_output)
+            logger.debug("Initial output validated successfully")
             return RepairResult(
                 success=True,
                 result=result,
@@ -299,6 +325,7 @@ class AsyncRepairLoop(RepairLoop):
             )
         except ValidationError as e:
             last_error = e
+            logger.warning("Initial validation failed, starting async repair loop")
 
         schema = self.validator.get_json_schema()
 
@@ -309,7 +336,10 @@ class AsyncRepairLoop(RepairLoop):
             # Apply delay before retry (except first attempt)
             if attempt > 0:
                 delay = self.calculate_delay(attempt - 1)
+                logger.debug("Waiting %.2fs before retry attempt %d", delay, attempt + 1)
                 await asyncio.sleep(delay)
+
+            logger.info("Starting async repair attempt %d/%d", attempt + 1, self.config.max_retries)
 
             # Build repair prompt
             repair_prompt = self.build_repair_prompt(original_prompt, last_error, schema)
@@ -331,6 +361,11 @@ class AsyncRepairLoop(RepairLoop):
                 if self.on_repair_attempt:
                     self.on_repair_attempt(attempt_record)
 
+                logger.info(
+                    "Async repair succeeded on attempt %d",
+                    attempt + 1,
+                    extra={"attempt": attempt + 1},
+                )
                 return RepairResult(
                     success=True,
                     result=result,
@@ -351,7 +386,19 @@ class AsyncRepairLoop(RepairLoop):
                 if self.on_repair_attempt:
                     self.on_repair_attempt(attempt_record)
 
+                logger.warning(
+                    "Async repair attempt %d failed: %s",
+                    attempt + 1,
+                    e.args[0] if e.args else str(e),
+                    extra={"attempt": attempt + 1},
+                )
+
         # All retries exhausted
+        logger.error(
+            "Async repair exhausted after %d attempts",
+            self.config.max_retries,
+            extra={"attempts": len(attempts)},
+        )
         raise RepairExhaustedError(
             f"Failed to get valid output after {self.config.max_retries} repair attempts",
             attempts=len(attempts),

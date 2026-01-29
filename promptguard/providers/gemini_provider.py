@@ -6,7 +6,16 @@ import os
 from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
-from promptguard.core.exceptions import ProviderError
+from promptguard.core.exceptions import (
+    AuthenticationError,
+    ContentFilteredError,
+    ContextLengthExceededError,
+    ModelNotFoundError,
+    ProviderError,
+    RateLimitError,
+    TimeoutError,
+)
+from promptguard.core.logging import get_logger
 from promptguard.providers.base import (
     CompletionResponse,
     LLMProvider,
@@ -15,6 +24,8 @@ from promptguard.providers.base import (
     UsageStats,
 )
 from promptguard.providers.registry import ProviderRegistry
+
+logger = get_logger(__name__)
 
 
 @ProviderRegistry.register("gemini")
@@ -90,6 +101,52 @@ class GeminiProvider(LLMProvider):
 
         return system_instruction, chat_history
 
+    def _handle_api_error(self, e: Exception, model: str) -> None:
+        """Convert API exceptions to specific PromptGuard exceptions.
+
+        Args:
+            e: The caught exception.
+            model: The model name for error context.
+
+        Raises:
+            TimeoutError: If the request timed out.
+            AuthenticationError: If authentication failed (401).
+            RateLimitError: If rate limited (429).
+            ModelNotFoundError: If model not found (404).
+            ContextLengthExceededError: If prompt too long.
+            ContentFilteredError: If content was blocked.
+            ProviderError: For other API errors.
+        """
+        error_str = str(e).lower()
+
+        if "timeout" in error_str or "timed out" in error_str:
+            logger.error(
+                "Request timed out", extra={"provider": self.provider_name, "model": model}
+            )
+            raise TimeoutError(self.provider_name, 60.0) from e
+        elif (
+            "401" in error_str or "invalid api key" in error_str or "api key not valid" in error_str
+        ):
+            logger.error("Authentication failed", extra={"provider": self.provider_name})
+            raise AuthenticationError(self.provider_name) from e
+        elif "429" in error_str or "rate limit" in error_str or "quota" in error_str:
+            logger.warning("Rate limit exceeded", extra={"provider": self.provider_name})
+            raise RateLimitError(self.provider_name) from e
+        elif "404" in error_str or "model not found" in error_str or "not found" in error_str:
+            logger.error("Model not found", extra={"provider": self.provider_name, "model": model})
+            raise ModelNotFoundError(model, self.provider_name) from e
+        elif "context" in error_str or "token" in error_str or "too long" in error_str:
+            logger.error(
+                "Context length exceeded", extra={"provider": self.provider_name, "model": model}
+            )
+            raise ContextLengthExceededError(self.provider_name, model) from e
+        elif "safety" in error_str or "blocked" in error_str:
+            logger.warning("Content filtered", extra={"provider": self.provider_name})
+            raise ContentFilteredError(self.provider_name) from e
+        else:
+            logger.error("API error: %s", e, extra={"provider": self.provider_name})
+            raise ProviderError(f"Gemini API error: {e}", provider=self.provider_name) from e
+
     def complete(
         self,
         messages: list[Message],
@@ -115,6 +172,10 @@ class GeminiProvider(LLMProvider):
         if system_instruction:
             model_kwargs["system_instruction"] = system_instruction
 
+        logger.debug(
+            "Starting completion request", extra={"provider": self.provider_name, "model": model}
+        )
+
         try:
             gemini_model = self._genai.GenerativeModel(**model_kwargs)
 
@@ -128,10 +189,14 @@ class GeminiProvider(LLMProvider):
                 response = chat.send_message(last_message)
 
         except Exception as e:
-            raise ProviderError(
-                f"Gemini API error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
+
+        # Check for content filtering
+        if hasattr(response, "prompt_feedback") and response.prompt_feedback:
+            feedback = response.prompt_feedback
+            if hasattr(feedback, "block_reason") and feedback.block_reason:
+                logger.warning("Content filtered", extra={"provider": self.provider_name})
+                raise ContentFilteredError(self.provider_name, str(feedback.block_reason))
 
         content = response.text if hasattr(response, "text") else ""
 
@@ -143,6 +208,15 @@ class GeminiProvider(LLMProvider):
                 prompt_tokens=getattr(metadata, "prompt_token_count", 0),
                 completion_tokens=getattr(metadata, "candidates_token_count", 0),
                 total_tokens=getattr(metadata, "total_token_count", 0),
+            )
+            logger.debug(
+                "Completion finished",
+                extra={
+                    "provider": self.provider_name,
+                    "model": model,
+                    "prompt_tokens": getattr(metadata, "prompt_token_count", 0),
+                    "completion_tokens": getattr(metadata, "candidates_token_count", 0),
+                },
             )
 
         return CompletionResponse(
@@ -198,6 +272,10 @@ class GeminiProvider(LLMProvider):
         if system_instruction:
             model_kwargs["system_instruction"] = system_instruction
 
+        logger.debug(
+            "Starting streaming request", extra={"provider": self.provider_name, "model": model}
+        )
+
         try:
             gemini_model = self._genai.GenerativeModel(**model_kwargs)
 
@@ -216,10 +294,7 @@ class GeminiProvider(LLMProvider):
                     yield chunk.text
 
         except Exception as e:
-            raise ProviderError(
-                f"Gemini API streaming error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
 
     async def astream(
         self,

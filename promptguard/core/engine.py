@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Generic, TypeVar
 
 from promptguard.core.config import PromptGuardConfig, RetryConfig
 from promptguard.core.hashing import PromptHasher, PromptVersion, VersionStore
+from promptguard.core.logging import get_logger
 from promptguard.core.repair import AsyncRepairLoop, RepairLoop
 from promptguard.core.validator import OutputValidator
 from promptguard.providers.base import LLMProvider, Message, MessageRole
@@ -17,6 +18,8 @@ from promptguard.providers.registry import ProviderRegistry
 from promptguard.schemas.adapters import create_adapter
 
 T = TypeVar("T")
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -189,6 +192,10 @@ Respond with ONLY the JSON object."""
 
         # Setup components
         provider, model_name = self._get_provider(model)
+        logger.debug(
+            "Starting LLM call",
+            extra={"provider": provider.provider_name, "model": model_name},
+        )
         adapter = create_adapter(schema)
         validator = OutputValidator(adapter)
         json_schema = adapter.to_json_schema()
@@ -246,7 +253,7 @@ Respond with ONLY the JSON object."""
                 model=model,
                 schema_hash=self.hasher.hash_schema(json_schema),
                 temperature=temperature,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
                 metadata=metadata or {},
             )
             version_hash = self.version_store.save(version)
@@ -260,6 +267,17 @@ Respond with ONLY the JSON object."""
                 "total_tokens": response.usage.total_tokens,
             }
 
+        duration_ms = (time.time() - start_time) * 1000
+        logger.info(
+            "LLM call completed",
+            extra={
+                "provider": response.provider,
+                "model": response.model,
+                "duration_ms": duration_ms,
+                "repair_attempts": len(repair_result.attempts),
+            },
+        )
+
         return LLMCallResult(
             data=repair_result.result,
             raw_response=response.content,
@@ -268,7 +286,7 @@ Respond with ONLY the JSON object."""
             version_hash=version_hash,
             repair_attempts=len(repair_result.attempts),
             usage=usage_dict,
-            duration_ms=(time.time() - start_time) * 1000,
+            duration_ms=duration_ms,
         )
 
     async def acall(
@@ -291,6 +309,10 @@ Respond with ONLY the JSON object."""
 
         # Setup components
         provider, model_name = self._get_provider(model)
+        logger.debug(
+            "Starting async LLM call",
+            extra={"provider": provider.provider_name, "model": model_name},
+        )
         adapter = create_adapter(schema)
         validator = OutputValidator(adapter)
         json_schema = adapter.to_json_schema()
@@ -347,7 +369,7 @@ Respond with ONLY the JSON object."""
                 model=model,
                 schema_hash=self.hasher.hash_schema(json_schema),
                 temperature=temperature,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
                 metadata=metadata or {},
             )
             version_hash = self.version_store.save(version)
@@ -361,6 +383,17 @@ Respond with ONLY the JSON object."""
                 "total_tokens": response.usage.total_tokens,
             }
 
+        duration_ms = (time.time() - start_time) * 1000
+        logger.info(
+            "Async LLM call completed",
+            extra={
+                "provider": response.provider,
+                "model": response.model,
+                "duration_ms": duration_ms,
+                "repair_attempts": len(repair_result.attempts),
+            },
+        )
+
         return LLMCallResult(
             data=repair_result.result,
             raw_response=response.content,
@@ -369,7 +402,7 @@ Respond with ONLY the JSON object."""
             version_hash=version_hash,
             repair_attempts=len(repair_result.attempts),
             usage=usage_dict,
-            duration_ms=(time.time() - start_time) * 1000,
+            duration_ms=duration_ms,
         )
 
 

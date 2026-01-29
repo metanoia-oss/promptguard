@@ -6,7 +6,16 @@ import os
 from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
-from promptguard.core.exceptions import ProviderError
+from promptguard.core.exceptions import (
+    AuthenticationError,
+    ContentFilteredError,
+    ContextLengthExceededError,
+    ModelNotFoundError,
+    ProviderError,
+    RateLimitError,
+    TimeoutError,
+)
+from promptguard.core.logging import get_logger
 from promptguard.providers.base import (
     CompletionResponse,
     LLMProvider,
@@ -15,6 +24,8 @@ from promptguard.providers.base import (
     UsageStats,
 )
 from promptguard.providers.registry import ProviderRegistry
+
+logger = get_logger(__name__)
 
 
 @ProviderRegistry.register("anthropic")
@@ -97,6 +108,50 @@ class AnthropicProvider(LLMProvider):
 
         return system_message, api_messages
 
+    def _handle_api_error(self, e: Exception, model: str) -> None:
+        """Convert API exceptions to specific PromptGuard exceptions.
+
+        Args:
+            e: The caught exception.
+            model: The model name for error context.
+
+        Raises:
+            TimeoutError: If the request timed out.
+            AuthenticationError: If authentication failed (401).
+            RateLimitError: If rate limited (429).
+            ModelNotFoundError: If model not found (404).
+            ContextLengthExceededError: If prompt too long.
+            ProviderError: For other API errors.
+        """
+        error_str = str(e).lower()
+
+        if "timeout" in error_str or "timed out" in error_str:
+            logger.error(
+                "Request timed out", extra={"provider": self.provider_name, "model": model}
+            )
+            raise TimeoutError(self.provider_name, self._timeout) from e
+        elif "401" in error_str or "unauthorized" in error_str or "invalid api key" in error_str:
+            logger.error("Authentication failed", extra={"provider": self.provider_name})
+            raise AuthenticationError(self.provider_name) from e
+        elif "429" in error_str or "rate limit" in error_str:
+            logger.warning("Rate limit exceeded", extra={"provider": self.provider_name})
+            raise RateLimitError(self.provider_name) from e
+        elif "404" in error_str or "model not found" in error_str or "does not exist" in error_str:
+            logger.error("Model not found", extra={"provider": self.provider_name, "model": model})
+            raise ModelNotFoundError(model, self.provider_name) from e
+        elif (
+            "context" in error_str
+            or "too many tokens" in error_str
+            or "prompt is too long" in error_str
+        ):
+            logger.error(
+                "Context length exceeded", extra={"provider": self.provider_name, "model": model}
+            )
+            raise ContextLengthExceededError(self.provider_name, model) from e
+        else:
+            logger.error("API error: %s", e, extra={"provider": self.provider_name})
+            raise ProviderError(f"Anthropic API error: {e}", provider=self.provider_name) from e
+
     def complete(
         self,
         messages: list[Message],
@@ -124,13 +179,19 @@ class AnthropicProvider(LLMProvider):
             if key in kwargs:
                 api_kwargs[key] = kwargs[key]
 
+        logger.debug(
+            "Starting completion request", extra={"provider": self.provider_name, "model": model}
+        )
+
         try:
             response = self._client.messages.create(**api_kwargs)
         except Exception as e:
-            raise ProviderError(
-                f"Anthropic API error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
+
+        # Check for content filtering
+        if response.stop_reason == "content_filter":
+            logger.warning("Content filtered", extra={"provider": self.provider_name})
+            raise ContentFilteredError(self.provider_name)
 
         # Extract text content
         content = ""
@@ -142,6 +203,16 @@ class AnthropicProvider(LLMProvider):
             prompt_tokens=response.usage.input_tokens,
             completion_tokens=response.usage.output_tokens,
             total_tokens=response.usage.input_tokens + response.usage.output_tokens,
+        )
+
+        logger.debug(
+            "Completion finished",
+            extra={
+                "provider": self.provider_name,
+                "model": model,
+                "prompt_tokens": response.usage.input_tokens,
+                "completion_tokens": response.usage.output_tokens,
+            },
         )
 
         return CompletionResponse(
@@ -179,13 +250,20 @@ class AnthropicProvider(LLMProvider):
             if key in kwargs:
                 api_kwargs[key] = kwargs[key]
 
+        logger.debug(
+            "Starting async completion request",
+            extra={"provider": self.provider_name, "model": model},
+        )
+
         try:
             response = await self._async_client.messages.create(**api_kwargs)
         except Exception as e:
-            raise ProviderError(
-                f"Anthropic API error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
+
+        # Check for content filtering
+        if response.stop_reason == "content_filter":
+            logger.warning("Content filtered", extra={"provider": self.provider_name})
+            raise ContentFilteredError(self.provider_name)
 
         content = ""
         for block in response.content:
@@ -196,6 +274,16 @@ class AnthropicProvider(LLMProvider):
             prompt_tokens=response.usage.input_tokens,
             completion_tokens=response.usage.output_tokens,
             total_tokens=response.usage.input_tokens + response.usage.output_tokens,
+        )
+
+        logger.debug(
+            "Async completion finished",
+            extra={
+                "provider": self.provider_name,
+                "model": model,
+                "prompt_tokens": response.usage.input_tokens,
+                "completion_tokens": response.usage.output_tokens,
+            },
         )
 
         return CompletionResponse(
@@ -228,14 +316,15 @@ class AnthropicProvider(LLMProvider):
         if system_message:
             api_kwargs["system"] = system_message
 
+        logger.debug(
+            "Starting streaming request", extra={"provider": self.provider_name, "model": model}
+        )
+
         try:
             with self._client.messages.stream(**api_kwargs) as stream:
                 yield from stream.text_stream
         except Exception as e:
-            raise ProviderError(
-                f"Anthropic API streaming error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
 
     async def astream(
         self,
@@ -258,15 +347,17 @@ class AnthropicProvider(LLMProvider):
         if system_message:
             api_kwargs["system"] = system_message
 
+        logger.debug(
+            "Starting async streaming request",
+            extra={"provider": self.provider_name, "model": model},
+        )
+
         try:
             async with self._async_client.messages.stream(**api_kwargs) as stream:
                 async for text in stream.text_stream:
                     yield text
         except Exception as e:
-            raise ProviderError(
-                f"Anthropic API streaming error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
 
     def get_model_info(self, model: str) -> dict[str, Any]:
         """Get information about a model."""

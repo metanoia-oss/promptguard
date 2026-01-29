@@ -1,7 +1,7 @@
 """Tests for snapshot testing module."""
 
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from promptguard.testing.snapshot import (
@@ -49,7 +49,7 @@ class TestSnapshotStore:
                 schema_hash="schema123",
                 output={"result": "value"},
                 raw_output="raw",
-                captured_at=datetime.utcnow(),
+                captured_at=datetime.now(timezone.utc),
             )
 
             store.save(snapshot)
@@ -72,7 +72,7 @@ class TestSnapshotStore:
                 schema_hash="s",
                 output={},
                 raw_output="",
-                captured_at=datetime.utcnow(),
+                captured_at=datetime.now(timezone.utc),
             )
             store.save(snapshot)
 
@@ -90,7 +90,7 @@ class TestSnapshotStore:
                     schema_hash="s",
                     output={},
                     raw_output="",
-                    captured_at=datetime.utcnow(),
+                    captured_at=datetime.now(timezone.utc),
                 )
                 store.save(snapshot)
 
@@ -111,7 +111,7 @@ class TestSnapshotMatcher:
             schema_hash="s",
             output={"name": "John", "age": 30},
             raw_output="",
-            captured_at=datetime.utcnow(),
+            captured_at=datetime.now(timezone.utc),
         )
 
         diffs = matcher.compare(snapshot, {"name": "John", "age": 30})
@@ -127,7 +127,7 @@ class TestSnapshotMatcher:
             schema_hash="s",
             output={"name": "John", "age": 30},
             raw_output="",
-            captured_at=datetime.utcnow(),
+            captured_at=datetime.now(timezone.utc),
         )
 
         diffs = matcher.compare(snapshot, {"name": "John", "age": 31})
@@ -147,7 +147,7 @@ class TestSnapshotMatcher:
             schema_hash="s",
             output={"name": "John"},
             raw_output="",
-            captured_at=datetime.utcnow(),
+            captured_at=datetime.now(timezone.utc),
         )
 
         diffs = matcher.compare(snapshot, {"name": "John", "extra": "field"})
@@ -164,7 +164,7 @@ class TestSnapshotMatcher:
             schema_hash="s",
             output={"name": "John", "age": 30},
             raw_output="",
-            captured_at=datetime.utcnow(),
+            captured_at=datetime.now(timezone.utc),
         )
 
         diffs = matcher.compare(snapshot, {"name": "John"})
@@ -181,7 +181,7 @@ class TestSnapshotMatcher:
             schema_hash="s",
             output={"user": {"name": "John", "settings": {"theme": "dark"}}},
             raw_output="",
-            captured_at=datetime.utcnow(),
+            captured_at=datetime.now(timezone.utc),
         )
 
         diffs = matcher.compare(
@@ -201,7 +201,7 @@ class TestSnapshotMatcher:
             schema_hash="s",
             output={"x": 1},
             raw_output="",
-            captured_at=datetime.utcnow(),
+            captured_at=datetime.now(timezone.utc),
         )
 
         assert matcher.is_match(snapshot, {"x": 1})
@@ -217,7 +217,7 @@ class TestSnapshotMatcher:
             schema_hash="s",
             output={"value": 1, "timestamp": "2024-01-01"},
             raw_output="",
-            captured_at=datetime.utcnow(),
+            captured_at=datetime.now(timezone.utc),
         )
 
         diffs = matcher.compare(
