@@ -24,7 +24,6 @@ from promptguard.providers.base import (
 )
 from promptguard.providers.registry import ProviderRegistry
 
-
 logger = get_logger(__name__)
 
 
@@ -208,7 +207,9 @@ class OpenAIProvider(LLMProvider):
         error_str = str(e).lower()
 
         if "timeout" in error_str or "timed out" in error_str:
-            logger.error("Request timed out", extra={"provider": self.provider_name, "model": model})
+            logger.error(
+                "Request timed out", extra={"provider": self.provider_name, "model": model}
+            )
             raise TimeoutError(self.provider_name, self._timeout) from e
         elif "401" in error_str or "unauthorized" in error_str or "invalid api key" in error_str:
             logger.error("Authentication failed", extra={"provider": self.provider_name})
@@ -219,8 +220,12 @@ class OpenAIProvider(LLMProvider):
         elif "404" in error_str or "model not found" in error_str or "does not exist" in error_str:
             logger.error("Model not found", extra={"provider": self.provider_name, "model": model})
             raise ModelNotFoundError(model, self.provider_name) from e
-        elif "context" in error_str or "maximum context length" in error_str or "token" in error_str:
-            logger.error("Context length exceeded", extra={"provider": self.provider_name, "model": model})
+        elif (
+            "context" in error_str or "maximum context length" in error_str or "token" in error_str
+        ):
+            logger.error(
+                "Context length exceeded", extra={"provider": self.provider_name, "model": model}
+            )
             raise ContextLengthExceededError(self.provider_name, model) from e
         else:
             logger.error("API error: %s", e, extra={"provider": self.provider_name})
@@ -240,7 +245,9 @@ class OpenAIProvider(LLMProvider):
             messages, model, temperature, max_tokens, json_schema, **kwargs
         )
 
-        logger.debug("Starting completion request", extra={"provider": self.provider_name, "model": model})
+        logger.debug(
+            "Starting completion request", extra={"provider": self.provider_name, "model": model}
+        )
 
         try:
             response = self._client.chat.completions.create(**api_kwargs)
@@ -249,7 +256,9 @@ class OpenAIProvider(LLMProvider):
 
         # Validate response has choices
         if not response.choices:
-            logger.error("Empty response from API", extra={"provider": self.provider_name, "model": model})
+            logger.error(
+                "Empty response from API", extra={"provider": self.provider_name, "model": model}
+            )
             raise ProviderError("Empty response from API", provider=self.provider_name)
 
         # Check for content filtering
@@ -298,7 +307,10 @@ class OpenAIProvider(LLMProvider):
             messages, model, temperature, max_tokens, json_schema, **kwargs
         )
 
-        logger.debug("Starting async completion request", extra={"provider": self.provider_name, "model": model})
+        logger.debug(
+            "Starting async completion request",
+            extra={"provider": self.provider_name, "model": model},
+        )
 
         try:
             response = await self._async_client.chat.completions.create(**api_kwargs)
@@ -307,7 +319,9 @@ class OpenAIProvider(LLMProvider):
 
         # Validate response has choices
         if not response.choices:
-            logger.error("Empty response from API", extra={"provider": self.provider_name, "model": model})
+            logger.error(
+                "Empty response from API", extra={"provider": self.provider_name, "model": model}
+            )
             raise ProviderError("Empty response from API", provider=self.provider_name)
 
         # Check for content filtering
@@ -361,7 +375,9 @@ class OpenAIProvider(LLMProvider):
         if max_tokens:
             api_kwargs["max_tokens"] = max_tokens
 
-        logger.debug("Starting streaming request", extra={"provider": self.provider_name, "model": model})
+        logger.debug(
+            "Starting streaming request", extra={"provider": self.provider_name, "model": model}
+        )
 
         try:
             response = self._client.chat.completions.create(**api_kwargs)
@@ -390,7 +406,10 @@ class OpenAIProvider(LLMProvider):
         if max_tokens:
             api_kwargs["max_tokens"] = max_tokens
 
-        logger.debug("Starting async streaming request", extra={"provider": self.provider_name, "model": model})
+        logger.debug(
+            "Starting async streaming request",
+            extra={"provider": self.provider_name, "model": model},
+        )
 
         try:
             response = await self._async_client.chat.completions.create(**api_kwargs)

@@ -25,7 +25,6 @@ from promptguard.providers.base import (
 )
 from promptguard.providers.registry import ProviderRegistry
 
-
 logger = get_logger(__name__)
 
 
@@ -121,9 +120,13 @@ class GeminiProvider(LLMProvider):
         error_str = str(e).lower()
 
         if "timeout" in error_str or "timed out" in error_str:
-            logger.error("Request timed out", extra={"provider": self.provider_name, "model": model})
+            logger.error(
+                "Request timed out", extra={"provider": self.provider_name, "model": model}
+            )
             raise TimeoutError(self.provider_name, 60.0) from e
-        elif "401" in error_str or "invalid api key" in error_str or "api key not valid" in error_str:
+        elif (
+            "401" in error_str or "invalid api key" in error_str or "api key not valid" in error_str
+        ):
             logger.error("Authentication failed", extra={"provider": self.provider_name})
             raise AuthenticationError(self.provider_name) from e
         elif "429" in error_str or "rate limit" in error_str or "quota" in error_str:
@@ -133,7 +136,9 @@ class GeminiProvider(LLMProvider):
             logger.error("Model not found", extra={"provider": self.provider_name, "model": model})
             raise ModelNotFoundError(model, self.provider_name) from e
         elif "context" in error_str or "token" in error_str or "too long" in error_str:
-            logger.error("Context length exceeded", extra={"provider": self.provider_name, "model": model})
+            logger.error(
+                "Context length exceeded", extra={"provider": self.provider_name, "model": model}
+            )
             raise ContextLengthExceededError(self.provider_name, model) from e
         elif "safety" in error_str or "blocked" in error_str:
             logger.warning("Content filtered", extra={"provider": self.provider_name})
@@ -167,7 +172,9 @@ class GeminiProvider(LLMProvider):
         if system_instruction:
             model_kwargs["system_instruction"] = system_instruction
 
-        logger.debug("Starting completion request", extra={"provider": self.provider_name, "model": model})
+        logger.debug(
+            "Starting completion request", extra={"provider": self.provider_name, "model": model}
+        )
 
         try:
             gemini_model = self._genai.GenerativeModel(**model_kwargs)
@@ -265,7 +272,9 @@ class GeminiProvider(LLMProvider):
         if system_instruction:
             model_kwargs["system_instruction"] = system_instruction
 
-        logger.debug("Starting streaming request", extra={"provider": self.provider_name, "model": model})
+        logger.debug(
+            "Starting streaming request", extra={"provider": self.provider_name, "model": model}
+        )
 
         try:
             gemini_model = self._genai.GenerativeModel(**model_kwargs)

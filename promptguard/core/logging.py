@@ -7,7 +7,6 @@ import logging
 import sys
 from typing import Any
 
-
 # Package logger with NullHandler (silent by default)
 _package_logger = logging.getLogger("promptguard")
 _package_logger.addHandler(logging.NullHandler())
@@ -112,9 +111,7 @@ def configure_logging(
     if format_style == "json":
         formatter = JSONFormatter()
     else:
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     handler.setFormatter(formatter)
     logger.addHandler(handler)
