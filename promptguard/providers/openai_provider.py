@@ -6,7 +6,16 @@ import os
 from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
-from promptguard.core.exceptions import ProviderError
+from promptguard.core.exceptions import (
+    AuthenticationError,
+    ContentFilteredError,
+    ContextLengthExceededError,
+    ModelNotFoundError,
+    ProviderError,
+    RateLimitError,
+    TimeoutError,
+)
+from promptguard.core.logging import get_logger
 from promptguard.providers.base import (
     CompletionResponse,
     LLMProvider,
@@ -14,6 +23,9 @@ from promptguard.providers.base import (
     UsageStats,
 )
 from promptguard.providers.registry import ProviderRegistry
+
+
+logger = get_logger(__name__)
 
 
 @ProviderRegistry.register("openai")
@@ -178,6 +190,42 @@ class OpenAIProvider(LLMProvider):
 
         return api_kwargs
 
+    def _handle_api_error(self, e: Exception, model: str) -> None:
+        """Convert API exceptions to specific PromptGuard exceptions.
+
+        Args:
+            e: The caught exception.
+            model: The model name for error context.
+
+        Raises:
+            TimeoutError: If the request timed out.
+            AuthenticationError: If authentication failed (401).
+            RateLimitError: If rate limited (429).
+            ModelNotFoundError: If model not found (404).
+            ContextLengthExceededError: If prompt too long.
+            ProviderError: For other API errors.
+        """
+        error_str = str(e).lower()
+
+        if "timeout" in error_str or "timed out" in error_str:
+            logger.error("Request timed out", extra={"provider": self.provider_name, "model": model})
+            raise TimeoutError(self.provider_name, self._timeout) from e
+        elif "401" in error_str or "unauthorized" in error_str or "invalid api key" in error_str:
+            logger.error("Authentication failed", extra={"provider": self.provider_name})
+            raise AuthenticationError(self.provider_name) from e
+        elif "429" in error_str or "rate limit" in error_str:
+            logger.warning("Rate limit exceeded", extra={"provider": self.provider_name})
+            raise RateLimitError(self.provider_name) from e
+        elif "404" in error_str or "model not found" in error_str or "does not exist" in error_str:
+            logger.error("Model not found", extra={"provider": self.provider_name, "model": model})
+            raise ModelNotFoundError(model, self.provider_name) from e
+        elif "context" in error_str or "maximum context length" in error_str or "token" in error_str:
+            logger.error("Context length exceeded", extra={"provider": self.provider_name, "model": model})
+            raise ContextLengthExceededError(self.provider_name, model) from e
+        else:
+            logger.error("API error: %s", e, extra={"provider": self.provider_name})
+            raise ProviderError(f"OpenAI API error: {e}", provider=self.provider_name) from e
+
     def complete(
         self,
         messages: list[Message],
@@ -192,13 +240,22 @@ class OpenAIProvider(LLMProvider):
             messages, model, temperature, max_tokens, json_schema, **kwargs
         )
 
+        logger.debug("Starting completion request", extra={"provider": self.provider_name, "model": model})
+
         try:
             response = self._client.chat.completions.create(**api_kwargs)
         except Exception as e:
-            raise ProviderError(
-                f"OpenAI API error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
+
+        # Validate response has choices
+        if not response.choices:
+            logger.error("Empty response from API", extra={"provider": self.provider_name, "model": model})
+            raise ProviderError("Empty response from API", provider=self.provider_name)
+
+        # Check for content filtering
+        if response.choices[0].finish_reason == "content_filter":
+            logger.warning("Content filtered", extra={"provider": self.provider_name})
+            raise ContentFilteredError(self.provider_name)
 
         content = response.choices[0].message.content or ""
         usage = None
@@ -207,6 +264,15 @@ class OpenAIProvider(LLMProvider):
                 prompt_tokens=response.usage.prompt_tokens,
                 completion_tokens=response.usage.completion_tokens,
                 total_tokens=response.usage.total_tokens,
+            )
+            logger.debug(
+                "Completion finished",
+                extra={
+                    "provider": self.provider_name,
+                    "model": model,
+                    "prompt_tokens": response.usage.prompt_tokens,
+                    "completion_tokens": response.usage.completion_tokens,
+                },
             )
 
         return CompletionResponse(
@@ -232,13 +298,22 @@ class OpenAIProvider(LLMProvider):
             messages, model, temperature, max_tokens, json_schema, **kwargs
         )
 
+        logger.debug("Starting async completion request", extra={"provider": self.provider_name, "model": model})
+
         try:
             response = await self._async_client.chat.completions.create(**api_kwargs)
         except Exception as e:
-            raise ProviderError(
-                f"OpenAI API error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
+
+        # Validate response has choices
+        if not response.choices:
+            logger.error("Empty response from API", extra={"provider": self.provider_name, "model": model})
+            raise ProviderError("Empty response from API", provider=self.provider_name)
+
+        # Check for content filtering
+        if response.choices[0].finish_reason == "content_filter":
+            logger.warning("Content filtered", extra={"provider": self.provider_name})
+            raise ContentFilteredError(self.provider_name)
 
         content = response.choices[0].message.content or ""
         usage = None
@@ -247,6 +322,15 @@ class OpenAIProvider(LLMProvider):
                 prompt_tokens=response.usage.prompt_tokens,
                 completion_tokens=response.usage.completion_tokens,
                 total_tokens=response.usage.total_tokens,
+            )
+            logger.debug(
+                "Async completion finished",
+                extra={
+                    "provider": self.provider_name,
+                    "model": model,
+                    "prompt_tokens": response.usage.prompt_tokens,
+                    "completion_tokens": response.usage.completion_tokens,
+                },
             )
 
         return CompletionResponse(
@@ -277,16 +361,15 @@ class OpenAIProvider(LLMProvider):
         if max_tokens:
             api_kwargs["max_tokens"] = max_tokens
 
+        logger.debug("Starting streaming request", extra={"provider": self.provider_name, "model": model})
+
         try:
             response = self._client.chat.completions.create(**api_kwargs)
             for chunk in response:
                 if chunk.choices and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
         except Exception as e:
-            raise ProviderError(
-                f"OpenAI API streaming error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
 
     async def astream(
         self,
@@ -307,16 +390,15 @@ class OpenAIProvider(LLMProvider):
         if max_tokens:
             api_kwargs["max_tokens"] = max_tokens
 
+        logger.debug("Starting async streaming request", extra={"provider": self.provider_name, "model": model})
+
         try:
             response = await self._async_client.chat.completions.create(**api_kwargs)
             async for chunk in response:
                 if chunk.choices and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
         except Exception as e:
-            raise ProviderError(
-                f"OpenAI API streaming error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
 
     def supports_json_mode(self, model: str) -> bool:
         """Check if the model supports JSON mode."""

@@ -107,4 +107,66 @@ PromptGuard auto-detects providers from model names. Provider-specific API keys 
 | OpenAI | `OPENAI_API_KEY` |
 | Anthropic | `ANTHROPIC_API_KEY` |
 | Google | `GOOGLE_API_KEY` |
-| Local | `OPENAI_API_BASE` (for compatible servers) |
+| Local | `LOCAL_LLM_BASE_URL` (for compatible servers) |
+
+---
+
+## Logging
+
+PromptGuard is silent by default. Enable logging with `configure_logging`:
+
+```python
+from promptguard import configure_logging
+
+# Enable INFO level logging to stderr
+configure_logging(level="INFO")
+
+# Enable DEBUG for detailed request/response info
+configure_logging(level="DEBUG")
+
+# JSON format for production/log aggregation
+configure_logging(level="INFO", format_style="json")
+```
+
+**Log levels:**
+- `DEBUG` — Detailed request/response info
+- `INFO` — Repair attempts, successful operations
+- `WARNING` — Validation failures, retries
+- `ERROR` — Provider errors, repair exhaustion
+
+---
+
+## Exceptions
+
+PromptGuard provides specific exception types for error handling:
+
+```python
+from promptguard import (
+    PromptGuardError,      # Base exception
+    ValidationError,       # Schema validation failed
+    RepairExhaustedError,  # Max repair attempts reached
+    ProviderError,         # Generic provider error
+    AuthenticationError,   # Invalid API key (401)
+    RateLimitError,        # Rate limit exceeded (429)
+    TimeoutError,          # Request timed out
+    ModelNotFoundError,    # Model doesn't exist (404)
+    ContextLengthExceededError,  # Prompt too long
+    ContentFilteredError,  # Content blocked by safety filters
+)
+```
+
+**Example error handling:**
+
+```python
+from promptguard import llm_call, RateLimitError, AuthenticationError
+import time
+
+try:
+    result = llm_call(prompt="...", model="gpt-4o", schema=MySchema)
+except AuthenticationError:
+    print("Check your OPENAI_API_KEY")
+except RateLimitError as e:
+    if e.retry_after:
+        time.sleep(e.retry_after)
+    # retry...
+```

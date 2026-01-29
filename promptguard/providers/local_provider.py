@@ -6,7 +6,15 @@ import os
 from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
-from promptguard.core.exceptions import ProviderError
+from promptguard.core.exceptions import (
+    AuthenticationError,
+    ContextLengthExceededError,
+    ModelNotFoundError,
+    ProviderError,
+    RateLimitError,
+    TimeoutError,
+)
+from promptguard.core.logging import get_logger
 from promptguard.providers.base import (
     CompletionResponse,
     LLMProvider,
@@ -14,6 +22,9 @@ from promptguard.providers.base import (
     UsageStats,
 )
 from promptguard.providers.registry import ProviderRegistry
+
+
+logger = get_logger(__name__)
 
 
 @ProviderRegistry.register("local")
@@ -107,6 +118,42 @@ class LocalProvider(LLMProvider):
         """Convert internal Message format to OpenAI API format."""
         return [{"role": m.role.value, "content": m.content} for m in messages]
 
+    def _handle_api_error(self, e: Exception, model: str) -> None:
+        """Convert API exceptions to specific PromptGuard exceptions.
+
+        Args:
+            e: The caught exception.
+            model: The model name for error context.
+
+        Raises:
+            TimeoutError: If the request timed out.
+            AuthenticationError: If authentication failed (401).
+            RateLimitError: If rate limited (429).
+            ModelNotFoundError: If model not found (404).
+            ContextLengthExceededError: If prompt too long.
+            ProviderError: For other API errors.
+        """
+        error_str = str(e).lower()
+
+        if "timeout" in error_str or "timed out" in error_str:
+            logger.error("Request timed out", extra={"provider": self.provider_name, "model": model})
+            raise TimeoutError(self.provider_name, self._timeout) from e
+        elif "401" in error_str or "unauthorized" in error_str:
+            logger.error("Authentication failed", extra={"provider": self.provider_name})
+            raise AuthenticationError(self.provider_name) from e
+        elif "429" in error_str or "rate limit" in error_str:
+            logger.warning("Rate limit exceeded", extra={"provider": self.provider_name})
+            raise RateLimitError(self.provider_name) from e
+        elif "404" in error_str or "model not found" in error_str:
+            logger.error("Model not found", extra={"provider": self.provider_name, "model": model})
+            raise ModelNotFoundError(model, self.provider_name) from e
+        elif "context" in error_str or "token" in error_str or "too long" in error_str:
+            logger.error("Context length exceeded", extra={"provider": self.provider_name, "model": model})
+            raise ContextLengthExceededError(self.provider_name, model) from e
+        else:
+            logger.error("API error: %s", e, extra={"provider": self.provider_name})
+            raise ProviderError(f"Local LLM API error: {e}", provider=self.provider_name) from e
+
     def complete(
         self,
         messages: list[Message],
@@ -130,17 +177,21 @@ class LocalProvider(LLMProvider):
         if json_schema:
             payload["response_format"] = {"type": "json_object"}
 
+        logger.debug("Starting completion request", extra={"provider": self.provider_name, "model": model})
+
         try:
             response = self._client.post("/chat/completions", json=payload)
             response.raise_for_status()
             data = response.json()
         except Exception as e:
-            raise ProviderError(
-                f"Local LLM API error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
 
-        content = data["choices"][0]["message"]["content"]
+        # Validate response has choices
+        if not data.get("choices"):
+            logger.error("Empty response from API", extra={"provider": self.provider_name, "model": model})
+            raise ProviderError("Empty response from API", provider=self.provider_name)
+
+        content = data["choices"][0]["message"]["content"] or ""
 
         usage = None
         if "usage" in data:
@@ -148,6 +199,15 @@ class LocalProvider(LLMProvider):
                 prompt_tokens=data["usage"].get("prompt_tokens", 0),
                 completion_tokens=data["usage"].get("completion_tokens", 0),
                 total_tokens=data["usage"].get("total_tokens", 0),
+            )
+            logger.debug(
+                "Completion finished",
+                extra={
+                    "provider": self.provider_name,
+                    "model": model,
+                    "prompt_tokens": data["usage"].get("prompt_tokens", 0),
+                    "completion_tokens": data["usage"].get("completion_tokens", 0),
+                },
             )
 
         return CompletionResponse(
@@ -181,17 +241,21 @@ class LocalProvider(LLMProvider):
         if json_schema:
             payload["response_format"] = {"type": "json_object"}
 
+        logger.debug("Starting async completion request", extra={"provider": self.provider_name, "model": model})
+
         try:
             response = await self._async_client.post("/chat/completions", json=payload)
             response.raise_for_status()
             data = response.json()
         except Exception as e:
-            raise ProviderError(
-                f"Local LLM API error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
 
-        content = data["choices"][0]["message"]["content"]
+        # Validate response has choices
+        if not data.get("choices"):
+            logger.error("Empty response from API", extra={"provider": self.provider_name, "model": model})
+            raise ProviderError("Empty response from API", provider=self.provider_name)
+
+        content = data["choices"][0]["message"]["content"] or ""
 
         usage = None
         if "usage" in data:
@@ -199,6 +263,15 @@ class LocalProvider(LLMProvider):
                 prompt_tokens=data["usage"].get("prompt_tokens", 0),
                 completion_tokens=data["usage"].get("completion_tokens", 0),
                 total_tokens=data["usage"].get("total_tokens", 0),
+            )
+            logger.debug(
+                "Async completion finished",
+                extra={
+                    "provider": self.provider_name,
+                    "model": model,
+                    "prompt_tokens": data["usage"].get("prompt_tokens", 0),
+                    "completion_tokens": data["usage"].get("completion_tokens", 0),
+                },
             )
 
         return CompletionResponse(
@@ -219,6 +292,8 @@ class LocalProvider(LLMProvider):
         **kwargs: Any,
     ) -> Iterator[str]:
         """Execute a synchronous streaming completion request."""
+        import json as json_module
+
         payload: dict[str, Any] = {
             "model": model,
             "messages": self._convert_messages(messages),
@@ -228,6 +303,8 @@ class LocalProvider(LLMProvider):
 
         if max_tokens:
             payload["max_tokens"] = max_tokens
+
+        logger.debug("Starting streaming request", extra={"provider": self.provider_name, "model": model})
 
         try:
             with self._client.stream("POST", "/chat/completions", json=payload) as response:
@@ -238,19 +315,19 @@ class LocalProvider(LLMProvider):
                         if data_str == "[DONE]":
                             break
                         try:
-                            import json
-
-                            data = json.loads(data_str)
+                            data = json_module.loads(data_str)
                             content = data["choices"][0]["delta"].get("content", "")
                             if content:
                                 yield content
-                        except Exception:
+                        except Exception as chunk_error:
+                            logger.warning(
+                                "Skipping malformed streaming chunk: %s",
+                                chunk_error,
+                                extra={"provider": self.provider_name},
+                            )
                             continue
         except Exception as e:
-            raise ProviderError(
-                f"Local LLM API streaming error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
 
     async def astream(
         self,
@@ -261,6 +338,8 @@ class LocalProvider(LLMProvider):
         **kwargs: Any,
     ) -> AsyncIterator[str]:
         """Execute an asynchronous streaming completion request."""
+        import json as json_module
+
         payload: dict[str, Any] = {
             "model": model,
             "messages": self._convert_messages(messages),
@@ -270,6 +349,8 @@ class LocalProvider(LLMProvider):
 
         if max_tokens:
             payload["max_tokens"] = max_tokens
+
+        logger.debug("Starting async streaming request", extra={"provider": self.provider_name, "model": model})
 
         try:
             async with self._async_client.stream(
@@ -282,19 +363,19 @@ class LocalProvider(LLMProvider):
                         if data_str == "[DONE]":
                             break
                         try:
-                            import json
-
-                            data = json.loads(data_str)
+                            data = json_module.loads(data_str)
                             content = data["choices"][0]["delta"].get("content", "")
                             if content:
                                 yield content
-                        except Exception:
+                        except Exception as chunk_error:
+                            logger.warning(
+                                "Skipping malformed streaming chunk: %s",
+                                chunk_error,
+                                extra={"provider": self.provider_name},
+                            )
                             continue
         except Exception as e:
-            raise ProviderError(
-                f"Local LLM API streaming error: {e}",
-                provider=self.provider_name,
-            ) from e
+            self._handle_api_error(e, model)
 
     def list_models(self) -> list[str]:
         """List available models from the local server.
@@ -307,7 +388,8 @@ class LocalProvider(LLMProvider):
             response.raise_for_status()
             data = response.json()
             return [m["id"] for m in data.get("data", [])]
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to list models: %s", e, extra={"provider": self.provider_name})
             return []
 
     def get_model_info(self, model: str) -> dict[str, Any]:

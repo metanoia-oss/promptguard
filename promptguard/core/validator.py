@@ -7,7 +7,10 @@ import re
 from typing import Any, TypeVar
 
 from promptguard.core.exceptions import ValidationError
+from promptguard.core.logging import get_logger
 from promptguard.schemas.adapters import SchemaAdapter, create_adapter
+
+logger = get_logger(__name__)
 
 T = TypeVar("T")
 
@@ -130,6 +133,7 @@ class OutputValidator:
         try:
             data = json.loads(json_str)
         except json.JSONDecodeError as e:
+            logger.warning("JSON decode error: %s", e)
             raise ValidationError(
                 f"Invalid JSON in LLM output: {e}",
                 raw_output=raw_output,
@@ -146,12 +150,17 @@ class OutputValidator:
         # Validate against schema
         errors = self.adapter.get_validation_errors(data)
         if errors:
+            logger.warning(
+                "Schema validation failed with %d error(s)",
+                len(errors),
+            )
             raise ValidationError(
                 f"Schema validation failed with {len(errors)} error(s)",
                 raw_output=raw_output,
                 errors=errors,
             )
 
+        logger.debug("Validation successful")
         # Return validated/parsed data
         return self.adapter.validate(data)
 

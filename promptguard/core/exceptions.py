@@ -149,3 +149,92 @@ class ConfigurationError(PromptGuardError):
     ) -> None:
         super().__init__(message)
         self.config_key = config_key
+
+
+class TimeoutError(PromptGuardError):
+    """Request timed out.
+
+    Attributes:
+        provider: Name of the provider that timed out.
+        timeout_seconds: The timeout duration in seconds.
+    """
+
+    def __init__(self, provider: str, timeout_seconds: float) -> None:
+        self.provider = provider
+        self.timeout_seconds = timeout_seconds
+        super().__init__(
+            f"[{provider}] Request timeout after {timeout_seconds}s. "
+            "Check network connectivity or increase timeout."
+        )
+
+
+class RateLimitError(ProviderError):
+    """API rate limit (429) exceeded.
+
+    Attributes:
+        retry_after: Suggested retry delay in seconds, if provided.
+    """
+
+    def __init__(self, provider: str, retry_after: int | None = None) -> None:
+        self.retry_after = retry_after
+        msg = "Rate limit exceeded"
+        if retry_after:
+            msg += f". Retry after {retry_after}s"
+        super().__init__(msg, provider=provider, status_code=429)
+
+
+class AuthenticationError(ProviderError):
+    """API authentication failed (401)."""
+
+    def __init__(self, provider: str) -> None:
+        super().__init__(
+            f"Invalid API credentials. Check your {provider.upper()}_API_KEY.",
+            provider=provider,
+            status_code=401,
+        )
+
+
+class ModelNotFoundError(ProviderError):
+    """Requested model doesn't exist (404).
+
+    Attributes:
+        model: The model name that was not found.
+    """
+
+    def __init__(self, model: str, provider: str) -> None:
+        self.model = model
+        super().__init__(
+            f"Model '{model}' not found. Verify model name and API access.",
+            provider=provider,
+            status_code=404,
+        )
+
+
+class ContextLengthExceededError(ProviderError):
+    """Prompt exceeds model context length.
+
+    Attributes:
+        model: The model that rejected the prompt.
+    """
+
+    def __init__(self, provider: str, model: str, details: str = "") -> None:
+        self.model = model
+        msg = f"Prompt too long for {model}"
+        if details:
+            msg += f". {details}"
+        super().__init__(msg, provider=provider, status_code=400)
+
+
+class ContentFilteredError(ProviderError):
+    """Content blocked by safety filters.
+
+    Attributes:
+        reason: The reason for content filtering, if provided.
+    """
+
+    def __init__(self, provider: str, reason: str | None = None) -> None:
+        self.reason = reason
+        msg = f"Content filtered by {provider} safety policy"
+        if reason:
+            msg += f": {reason}"
+        super().__init__(msg, provider=provider, status_code=400)

@@ -1,7 +1,7 @@
 """Tests for hashing and versioning module."""
 
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from promptguard.core.hashing import PromptHasher, PromptVersion, VersionStore
@@ -91,7 +91,7 @@ class TestVersionStore:
                 model="gpt-4o",
                 schema_hash="schema123",
                 temperature=0.7,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
 
             store.save(version)
@@ -116,7 +116,7 @@ class TestVersionStore:
                 model="gpt-4o",
                 schema_hash=None,
                 temperature=0.7,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
 
             assert not store.exists("test123")
@@ -133,7 +133,7 @@ class TestVersionStore:
                 model="gpt-4o",
                 schema_hash=None,
                 temperature=0.7,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
 
             store.save(version)
@@ -153,7 +153,7 @@ class TestVersionStore:
                     model="gpt-4o",
                     schema_hash=None,
                     temperature=0.7,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc),
                 )
                 store.save(version)
 
@@ -172,7 +172,7 @@ class TestVersionStore:
                     model=model,
                     schema_hash=None,
                     temperature=0.7,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc),
                 )
                 store.save(version)
 

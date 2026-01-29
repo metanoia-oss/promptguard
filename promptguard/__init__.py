@@ -7,11 +7,18 @@ from promptguard.core.config import (
     VersioningConfig,
 )
 from promptguard.core.exceptions import (
+    AuthenticationError,
+    ConfigurationError,
+    ContentFilteredError,
+    ContextLengthExceededError,
+    ModelNotFoundError,
     PromptGuardError,
     ProviderError,
     ProviderNotFoundError,
+    RateLimitError,
     RepairExhaustedError,
     SchemaError,
+    TimeoutError,
     ValidationError,
 )
 
@@ -38,9 +45,18 @@ __all__ = [
     "ProviderError",
     "ProviderNotFoundError",
     "SchemaError",
+    "ConfigurationError",
+    "TimeoutError",
+    "RateLimitError",
+    "AuthenticationError",
+    "ModelNotFoundError",
+    "ContextLengthExceededError",
+    "ContentFilteredError",
     # Versioning
     "PromptVersion",
     "PromptHasher",
+    # Logging
+    "configure_logging",
 ]
 
 
@@ -76,5 +92,10 @@ def __getattr__(name: str):
         from promptguard.core.hashing import PromptHasher, PromptVersion
 
         return {"PromptVersion": PromptVersion, "PromptHasher": PromptHasher}[name]
+
+    if name == "configure_logging":
+        from promptguard.core.logging import configure_logging
+
+        return configure_logging
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
